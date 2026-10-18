@@ -245,9 +245,35 @@ button:disabled {
   color: var(--accent);
 }
 
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
+}
+
+.result-badge {
+  font-weight: 600;
+}
+
+.result-covered {
+  color: var(--success);
+}
+
+.result-not_covered {
+  color: var(--danger);
+}
+
+.result-push {
+  color: var(--text-muted);
+}
+
+.my-team-row td {
+  background: rgba(228, 0, 43, 0.06);
+  font-weight: 600;
 }
 
 th,
@@ -438,6 +464,33 @@ th {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.92rem;
+}
+
+.distribution-bar {
+  display: flex;
+  height: 26px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.distribution-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.distribution-segment.away {
+  background: #3a4256;
+}
+
+.distribution-segment.home {
+  background: var(--accent);
 }
 
 .auth-shell {

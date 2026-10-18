@@ -61,73 +61,75 @@ function CommissionerGamesTable({
   const [correctingGameId, setCorrectingGameId] = useState<string | null>(null);
 
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Matchup</th>
-          <th>Kickoff</th>
-          <th>Line</th>
-          <th>Score</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {games.map((g) => {
-          const canCorrect = g.status !== "final" && g.status !== "void";
-          const lastCorrection = g.corrections?.[0];
-          return (
-            <Fragment key={g.id}>
-              <tr>
-                <td>
-                  {g.awayTeam} @ {g.homeTeam}
-                </td>
-                <td>
-                  {dayLabel(g.kickoffAt)} {timeLabel(g.kickoffAt)}
-                </td>
-                <td>
-                  {g.favoriteTeam === "home" ? g.homeTeam : g.awayTeam} -{g.spreadValue}
-                  {lastCorrection && (
-                    <div
-                      className="muted"
-                      title={`Corrected by ${lastCorrection.changedByUser.displayName}${lastCorrection.reason ? `: ${lastCorrection.reason}` : ""}`}
-                    >
-                      corrected{g.corrections!.length > 1 ? ` ×${g.corrections!.length}` : ""}
-                    </div>
-                  )}
-                </td>
-                <td>{g.homeScore !== null ? `${g.awayScore} - ${g.homeScore}` : "—"}</td>
-                <td>{g.status}</td>
-                <td>
-                  {canCorrect && (
-                    <button
-                      className="secondary"
-                      onClick={() => setCorrectingGameId((id) => (id === g.id ? null : g.id))}
-                    >
-                      {correctingGameId === g.id ? "Cancel" : "Correct line"}
-                    </button>
-                  )}
-                </td>
-              </tr>
-              {correctingGameId === g.id && (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Matchup</th>
+            <th>Kickoff</th>
+            <th>Line</th>
+            <th>Score</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {games.map((g) => {
+            const canCorrect = g.status !== "final" && g.status !== "void";
+            const lastCorrection = g.corrections?.[0];
+            return (
+              <Fragment key={g.id}>
                 <tr>
-                  <td colSpan={6}>
-                    <LineCorrectionForm
-                      weekId={weekId}
-                      game={g}
-                      onDone={() => {
-                        setCorrectingGameId(null);
-                        onChange();
-                      }}
-                    />
+                  <td>
+                    {g.awayTeam} @ {g.homeTeam}
+                  </td>
+                  <td>
+                    {dayLabel(g.kickoffAt)} {timeLabel(g.kickoffAt)}
+                  </td>
+                  <td>
+                    {g.favoriteTeam === "home" ? g.homeTeam : g.awayTeam} -{g.spreadValue}
+                    {lastCorrection && (
+                      <div
+                        className="muted"
+                        title={`Corrected by ${lastCorrection.changedByUser.displayName}${lastCorrection.reason ? `: ${lastCorrection.reason}` : ""}`}
+                      >
+                        corrected{g.corrections!.length > 1 ? ` ×${g.corrections!.length}` : ""}
+                      </div>
+                    )}
+                  </td>
+                  <td>{g.homeScore !== null ? `${g.awayScore} - ${g.homeScore}` : "—"}</td>
+                  <td>{g.status}</td>
+                  <td>
+                    {canCorrect && (
+                      <button
+                        className="secondary"
+                        onClick={() => setCorrectingGameId((id) => (id === g.id ? null : g.id))}
+                      >
+                        {correctingGameId === g.id ? "Cancel" : "Correct line"}
+                      </button>
+                    )}
                   </td>
                 </tr>
-              )}
-            </Fragment>
-          );
-        })}
-      </tbody>
-    </table>
+                {correctingGameId === g.id && (
+                  <tr>
+                    <td colSpan={6}>
+                      <LineCorrectionForm
+                        weekId={weekId}
+                        game={g}
+                        onDone={() => {
+                          setCorrectingGameId(null);
+                          onChange();
+                        }}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

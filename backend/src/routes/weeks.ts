@@ -14,6 +14,7 @@ import { computeWeekStandings } from "../services/standings";
 import { ensureHalfPointSpread } from "../utils/spread";
 import { getWhatIfData } from "../services/whatif";
 import { notifyWeekTeams } from "../services/notifications";
+import { computePickDistribution } from "../services/pickDistribution";
 
 export const weeksRouter = Router();
 weeksRouter.use(requireAuth);
@@ -375,6 +376,24 @@ weeksRouter.get("/:id/standings", async (req, res) => {
   }
 
   res.json(await computeWeekStandings(req.params.id));
+});
+
+weeksRouter.get("/:id/pick-distribution", async (req, res) => {
+  const found = await getWeekWithLeagueId(req.params.id);
+  if (!found) {
+    res.status(404).json({ error: "Week not found" });
+    return;
+  }
+  if (!(await isLeagueMember(found.leagueId, req.userId!))) {
+    res.status(403).json({ error: "You are not a member of this league" });
+    return;
+  }
+  if (found.week.status !== "locked" && found.week.status !== "graded") {
+    res.status(409).json({ error: "Pick distribution is available once picks are locked" });
+    return;
+  }
+
+  res.json(await computePickDistribution(req.params.id));
 });
 
 weeksRouter.get("/:id/whatif-data", async (req, res) => {

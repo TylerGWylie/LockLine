@@ -118,6 +118,13 @@ export interface Pick {
   pointsAwarded: number | null;
 }
 
+export interface GameDistribution {
+  gameId: string;
+  homeCount: number;
+  awayCount: number;
+  totalPicks: number;
+}
+
 export interface WeekStandingRow {
   teamId: string;
   teamName: string;

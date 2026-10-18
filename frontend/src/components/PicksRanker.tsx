@@ -44,6 +44,9 @@ function buildInitialOrder(games: Game[], picks: Pick[]): string[] {
 export function PicksRanker({ weekId, teamId, games, locked }: PicksRankerProps) {
   const [order, setOrder] = useState<string[]>(games.map((g) => g.id));
   const [sideByGame, setSideByGame] = useState<Record<string, "home" | "away">>({});
+  const [resultByGame, setResultByGame] = useState<
+    Record<string, { result: Pick["result"]; pointsAwarded: number | null }>
+  >({});
   const [version, setVersion] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -66,8 +69,13 @@ export function PicksRanker({ weekId, teamId, games, locked }: PicksRankerProps)
       .then(({ picks, version }) => {
         setOrder(buildInitialOrder(games, picks));
         const sides: Record<string, "home" | "away"> = {};
-        for (const p of picks) sides[p.gameId] = p.sideSelected;
+        const results: Record<string, { result: Pick["result"]; pointsAwarded: number | null }> = {};
+        for (const p of picks) {
+          sides[p.gameId] = p.sideSelected;
+          results[p.gameId] = { result: p.result, pointsAwarded: p.pointsAwarded };
+        }
         setSideByGame(sides);
+        setResultByGame(results);
         setVersion(version);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load picks"))
@@ -133,6 +141,7 @@ export function PicksRanker({ weekId, teamId, games, locked }: PicksRankerProps)
               <ScheduleRow
                 game={game}
                 side={sideByGame[game.id]}
+                result={resultByGame[game.id]}
                 disabled={locked}
                 onPickSide={(side) =>
                   setSideByGame((current) => ({ ...current, [game.id]: side }))
@@ -160,6 +169,7 @@ export function PicksRanker({ weekId, teamId, games, locked }: PicksRankerProps)
                   confidence={confidenceFor(gameId)}
                   game={game}
                   side={sideByGame[gameId]}
+                  result={resultByGame[gameId]}
                   disabled={locked}
                 />
               );
@@ -184,7 +194,31 @@ export function PicksRanker({ weekId, teamId, games, locked }: PicksRankerProps)
   );
 }
 
-function GameStatusLine({ game }: { game: Game }) {
+function ResultBadge({
+  pickResult,
+}: {
+  pickResult: { result: Pick["result"]; pointsAwarded: number | null } | undefined;
+}) {
+  if (!pickResult || pickResult.result === "pending") return null;
+  if (pickResult.result === "covered") {
+    return <span className="result-badge result-covered"> · Covered (+{pickResult.pointsAwarded} pts)</span>;
+  }
+  if (pickResult.result === "not_covered") {
+    return <span className="result-badge result-not_covered"> · Didn't cover</span>;
+  }
+  if (pickResult.result === "push") {
+    return <span className="result-badge result-push"> · Push</span>;
+  }
+  return null;
+}
+
+function GameStatusLine({
+  game,
+  pickResult,
+}: {
+  game: Game;
+  pickResult?: { result: Pick["result"]; pointsAwarded: number | null };
+}) {
   const lastCorrection = game.corrections?.[0];
   return (
     <div className="muted">
@@ -195,6 +229,7 @@ function GameStatusLine({ game }: { game: Game }) {
       {lastCorrection && (
         <span className="error"> · Line corrected — double check your pick</span>
       )}
+      <ResultBadge pickResult={pickResult} />
     </div>
   );
 }
@@ -202,11 +237,13 @@ function GameStatusLine({ game }: { game: Game }) {
 function ScheduleRow({
   game,
   side,
+  result,
   disabled,
   onPickSide,
 }: {
   game: Game;
   side: "home" | "away" | undefined;
+  result: { result: Pick["result"]; pointsAwarded: number | null } | undefined;
   disabled: boolean;
   onPickSide: (side: "home" | "away") => void;
 }) {
@@ -235,7 +272,7 @@ function ScheduleRow({
             {game.awayTeam} {signedSpread(awaySpread)}
           </button>
         </div>
-        <GameStatusLine game={game} />
+        <GameStatusLine game={game} pickResult={result} />
       </div>
     </li>
   );
@@ -246,12 +283,14 @@ function RankingRow({
   confidence,
   game,
   side,
+  result,
   disabled,
 }: {
   id: string;
   confidence: number;
   game: Game;
   side: "home" | "away" | undefined;
+  result: { result: Pick["result"]; pointsAwarded: number | null } | undefined;
   disabled: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id, disabled });
@@ -275,7 +314,7 @@ function RankingRow({
         ) : (
           <span className="muted">{game.awayTeam} @ {game.homeTeam} — pick a side above</span>
         )}
-        <GameStatusLine game={game} />
+        <GameStatusLine game={game} pickResult={result} />
       </div>
     </li>
   );
