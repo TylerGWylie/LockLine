@@ -146,7 +146,7 @@ authRouter.post("/forgot-password", async (req, res) => {
     });
     await sendMail(
       user.email,
-      "Reset your Confidence League password",
+      "Reset your Lockline password",
       `Use this code to reset your password (expires in 1 hour): ${resetToken}`,
     );
   }

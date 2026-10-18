@@ -13,6 +13,7 @@ import { SignupPage } from "./pages/SignupPage";
 import { StandingsPage } from "./pages/StandingsPage";
 import { TeamSettingsPage } from "./pages/TeamSettingsPage";
 import { WeekPage } from "./pages/WeekPage";
+import { WelcomePage } from "./pages/WelcomePage";
 import { WhatIfPage } from "./pages/WhatIfPage";
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/welcome" element={<WelcomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/join/:code" element={<JoinInvitePage />} />

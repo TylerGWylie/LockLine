@@ -7,7 +7,7 @@ export function Layout({ children }: { children: ReactNode }) {
     <div>
       <header className="nav">
         <Link to="/" className="brand">
-          Confidence League
+          LOCK<span className="brand-accent">LINE</span>
         </Link>
         <AccountMenu />
       </header>
