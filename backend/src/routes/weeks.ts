@@ -13,6 +13,7 @@ import { pollAndGradeScores } from "../jobs/gradeWeeks";
 import { computeWeekStandings } from "../services/standings";
 import { ensureHalfPointSpread } from "../utils/spread";
 import { getWhatIfData } from "../services/whatif";
+import { notifyWeekTeams } from "../services/notifications";
 
 export const weeksRouter = Router();
 weeksRouter.use(requireAuth);
@@ -251,6 +252,13 @@ weeksRouter.patch("/:id/games/:gameId/correct-line", async (req, res) => {
 
   const { favoriteTeam, reason } = parsed.data;
   const spreadValue = ensureHalfPointSpread(parsed.data.spreadValue);
+
+  const previousLine =
+    game.favoriteTeam && game.spreadValue !== null
+      ? `${game.favoriteTeam === "home" ? game.homeTeam : game.awayTeam} -${game.spreadValue}`
+      : "no line set";
+  const newLine = `${favoriteTeam === "home" ? game.homeTeam : game.awayTeam} -${spreadValue}`;
+
   await prisma.$transaction([
     prisma.spreadCorrection.create({
       data: {
@@ -269,7 +277,17 @@ weeksRouter.patch("/:id/games/:gameId/correct-line", async (req, res) => {
     }),
   ]);
 
-  res.status(204).send();
+  await notifyWeekTeams(
+    req.params.id,
+    `Line corrected: ${game.awayTeam} @ ${game.homeTeam}`,
+    `The commissioner corrected the line for ${game.awayTeam} @ ${game.homeTeam}.\n\n` +
+      `Previous: ${previousLine}\nNew: ${newLine}` +
+      (reason ? `\n\nReason: ${reason}` : "") +
+      `\n\nIf you've already picked a side for this game, double check it still matches your intent.`,
+  );
+
+  const updated = await getWeekWithLeagueId(req.params.id);
+  res.json(updated!.week.games.find((g) => g.id === game.id));
 });
 
 weeksRouter.patch("/:id/lock-override", async (req, res) => {

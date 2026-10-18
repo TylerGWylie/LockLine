@@ -75,6 +75,19 @@ export interface Game {
   orderIndex: number;
   favoriteTeam: "home" | "away" | null;
   spreadValue: number | null;
+  corrections?: SpreadCorrection[];
+}
+
+export interface SpreadCorrection {
+  id: string;
+  gameId: string;
+  previousFavorite: "home" | "away" | null;
+  previousValue: number | null;
+  newFavorite: "home" | "away";
+  newValue: number;
+  changedAt: string;
+  reason: string | null;
+  changedByUser: { displayName: string };
 }
 
 export interface OddsSearchResult {

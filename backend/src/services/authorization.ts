@@ -17,7 +17,18 @@ export async function isLeagueMember(leagueId: string, userId: string) {
 export async function getWeekWithLeagueId(weekId: string) {
   const week = await prisma.week.findUnique({
     where: { id: weekId },
-    include: { season: true, games: { orderBy: { orderIndex: "asc" } } },
+    include: {
+      season: true,
+      games: {
+        orderBy: { orderIndex: "asc" },
+        include: {
+          corrections: {
+            orderBy: { changedAt: "desc" },
+            include: { changedByUser: { select: { displayName: true } } },
+          },
+        },
+      },
+    },
   });
   if (!week) return null;
   return { week, leagueId: week.season.leagueId };

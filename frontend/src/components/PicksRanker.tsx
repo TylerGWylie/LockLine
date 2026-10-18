@@ -185,12 +185,16 @@ export function PicksRanker({ weekId, teamId, games, locked }: PicksRankerProps)
 }
 
 function GameStatusLine({ game }: { game: Game }) {
+  const lastCorrection = game.corrections?.[0];
   return (
     <div className="muted">
       {timeLabel(game.kickoffAt)}
       {game.status === "final" && ` · Final: ${game.awayScore}-${game.homeScore}`}
       {game.status === "in_progress" && ` · In progress: ${game.awayScore}-${game.homeScore}`}
       {game.status === "void" && " · Voided"}
+      {lastCorrection && (
+        <span className="error"> · Line corrected — double check your pick</span>
+      )}
     </div>
   );
 }

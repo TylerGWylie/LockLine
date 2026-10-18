@@ -1,7 +1,7 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { Fragment, type FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiFetch, ApiError } from "../api/client";
-import type { OddsSearchResult, Week } from "../types";
+import type { Game, OddsSearchResult, Week } from "../types";
 import { dayLabel, timeLabel } from "../utils/format";
 
 export function CommissionerWeekPage() {
@@ -38,34 +38,7 @@ export function CommissionerWeekPage() {
       ) : (
         <>
           <h2>Games</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Matchup</th>
-                <th>Kickoff</th>
-                <th>Line</th>
-                <th>Score</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {games.map((g) => (
-                <tr key={g.id}>
-                  <td>
-                    {g.awayTeam} @ {g.homeTeam}
-                  </td>
-                  <td>
-                    {dayLabel(g.kickoffAt)} {timeLabel(g.kickoffAt)}
-                  </td>
-                  <td>
-                    {g.favoriteTeam === "home" ? g.homeTeam : g.awayTeam} -{g.spreadValue}
-                  </td>
-                  <td>{g.homeScore !== null ? `${g.awayScore} - ${g.homeScore}` : "—"}</td>
-                  <td>{g.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <CommissionerGamesTable weekId={week.id} games={games} onChange={loadWeek} />
 
           {week.status !== "graded" && (
             <CommissionerScoring weekId={week.id} games={games} onChange={loadWeek} />
@@ -73,6 +46,149 @@ export function CommissionerWeekPage() {
         </>
       )}
     </div>
+  );
+}
+
+function CommissionerGamesTable({
+  weekId,
+  games,
+  onChange,
+}: {
+  weekId: string;
+  games: Game[];
+  onChange: () => void;
+}) {
+  const [correctingGameId, setCorrectingGameId] = useState<string | null>(null);
+
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Matchup</th>
+          <th>Kickoff</th>
+          <th>Line</th>
+          <th>Score</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {games.map((g) => {
+          const canCorrect = g.status !== "final" && g.status !== "void";
+          const lastCorrection = g.corrections?.[0];
+          return (
+            <Fragment key={g.id}>
+              <tr>
+                <td>
+                  {g.awayTeam} @ {g.homeTeam}
+                </td>
+                <td>
+                  {dayLabel(g.kickoffAt)} {timeLabel(g.kickoffAt)}
+                </td>
+                <td>
+                  {g.favoriteTeam === "home" ? g.homeTeam : g.awayTeam} -{g.spreadValue}
+                  {lastCorrection && (
+                    <div
+                      className="muted"
+                      title={`Corrected by ${lastCorrection.changedByUser.displayName}${lastCorrection.reason ? `: ${lastCorrection.reason}` : ""}`}
+                    >
+                      corrected{g.corrections!.length > 1 ? ` ×${g.corrections!.length}` : ""}
+                    </div>
+                  )}
+                </td>
+                <td>{g.homeScore !== null ? `${g.awayScore} - ${g.homeScore}` : "—"}</td>
+                <td>{g.status}</td>
+                <td>
+                  {canCorrect && (
+                    <button
+                      className="secondary"
+                      onClick={() => setCorrectingGameId((id) => (id === g.id ? null : g.id))}
+                    >
+                      {correctingGameId === g.id ? "Cancel" : "Correct line"}
+                    </button>
+                  )}
+                </td>
+              </tr>
+              {correctingGameId === g.id && (
+                <tr>
+                  <td colSpan={6}>
+                    <LineCorrectionForm
+                      weekId={weekId}
+                      game={g}
+                      onDone={() => {
+                        setCorrectingGameId(null);
+                        onChange();
+                      }}
+                    />
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function LineCorrectionForm({
+  weekId,
+  game,
+  onDone,
+}: {
+  weekId: string;
+  game: Game;
+  onDone: () => void;
+}) {
+  const [favoriteTeam, setFavoriteTeam] = useState<"home" | "away">(game.favoriteTeam ?? "home");
+  const [spreadValue, setSpreadValue] = useState(String(game.spreadValue ?? "3.5"));
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await apiFetch(`/weeks/${weekId}/games/${game.id}/correct-line`, {
+        method: "PATCH",
+        body: JSON.stringify({ favoriteTeam, spreadValue: Number(spreadValue), reason: reason || undefined }),
+      });
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to correct the line");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form className="row" onSubmit={handleSubmit} style={{ flexWrap: "wrap", padding: "8px 0" }}>
+      <select value={favoriteTeam} onChange={(e) => setFavoriteTeam(e.target.value as "home" | "away")}>
+        <option value="home">{game.homeTeam}</option>
+        <option value="away">{game.awayTeam}</option>
+      </select>
+      <input
+        type="number"
+        step="0.5"
+        min="0"
+        style={{ width: 80 }}
+        value={spreadValue}
+        onChange={(e) => setSpreadValue(e.target.value)}
+        required
+      />
+      <input
+        placeholder="Reason (optional)"
+        style={{ flex: 1, minWidth: 160 }}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+      />
+      <button type="submit" disabled={submitting}>
+        {submitting ? "Saving…" : "Save correction"}
+      </button>
+      {error && <div className="error">{error}</div>}
+    </form>
   );
 }
 
