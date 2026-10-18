@@ -40,6 +40,41 @@ weeksRouter.post("/:id/games", async (req, res) => {
     return;
   }
 
+  // Freeze each odds-API game's line right now, at pick time — not later at publish —
+  // so the number the commissioner saw when choosing the game is the number that sticks.
+  const oddsApiEntries = parsed.data.games.filter((g) => g.source === "odds_api");
+  const bySport = new Map<string, string[]>();
+  for (const g of oddsApiEntries) {
+    const list = bySport.get(g.sportKey) ?? [];
+    list.push(g.externalId);
+    bySport.set(g.sportKey, list);
+  }
+
+  const freshBySportAndId = new Map<string, Map<string, OddsEvent>>();
+  for (const [sportKey, externalIds] of bySport) {
+    try {
+      freshBySportAndId.set(sportKey, await getFreshSpreadsByExternalId(sportKey, externalIds));
+    } catch (err) {
+      res.status(502).json({ error: "Failed to fetch odds", detail: (err as Error).message });
+      return;
+    }
+  }
+
+  const failures: { externalId: string; homeTeam: string; awayTeam: string }[] = [];
+  for (const g of oddsApiEntries) {
+    const fresh = freshBySportAndId.get(g.sportKey)?.get(g.externalId);
+    if (!fresh || fresh.favoriteTeam === null || fresh.spreadValue === null) {
+      failures.push({ externalId: g.externalId, homeTeam: g.homeTeam, awayTeam: g.awayTeam });
+    }
+  }
+  if (failures.length > 0) {
+    res.status(409).json({
+      error: "Could not resolve a current spread for one or more games. Nothing was added.",
+      failures,
+    });
+    return;
+  }
+
   const startIndex = week.games.length;
   const created = await prisma.$transaction(
     parsed.data.games.map((game, i) => {
@@ -61,6 +96,7 @@ weeksRouter.post("/:id/games", async (req, res) => {
           },
         });
       }
+      const fresh = freshBySportAndId.get(game.sportKey)!.get(game.externalId)!;
       return prisma.game.create({
         data: {
           weekId: week.id,
@@ -72,6 +108,11 @@ weeksRouter.post("/:id/games", async (req, res) => {
           awayConference: game.awayConference,
           kickoffAt: new Date(game.kickoffAt),
           orderIndex: startIndex + i,
+          favoriteTeam: fresh.favoriteTeam,
+          spreadValue: fresh.spreadValue,
+          spreadSource: "odds_api",
+          spreadBookmakerKey: fresh.spreadBookmakerKey,
+          spreadCapturedAt: new Date(),
         },
       });
     }),
@@ -122,36 +163,13 @@ weeksRouter.post("/:id/publish", async (req, res) => {
     return;
   }
 
-  const oddsApiGames = week.games.filter((g) => g.externalId !== null);
-  const bySport = new Map<string, string[]>();
-  for (const g of oddsApiGames) {
-    const list = bySport.get(g.sportKey) ?? [];
-    list.push(g.externalId!);
-    bySport.set(g.sportKey, list);
-  }
-
-  const freshBySportAndId = new Map<string, Map<string, OddsEvent>>();
-  for (const [sportKey, externalIds] of bySport) {
-    try {
-      const fresh = await getFreshSpreadsByExternalId(sportKey, externalIds);
-      freshBySportAndId.set(sportKey, fresh);
-    } catch (err) {
-      res.status(502).json({ error: "Failed to fetch odds", detail: (err as Error).message });
-      return;
-    }
-  }
-
-  const failures: { gameId: string; homeTeam: string; awayTeam: string }[] = [];
-  for (const g of oddsApiGames) {
-    const fresh = freshBySportAndId.get(g.sportKey)?.get(g.externalId!);
-    if (!fresh || fresh.favoriteTeam === null || fresh.spreadValue === null) {
-      failures.push({ gameId: g.id, homeTeam: g.homeTeam, awayTeam: g.awayTeam });
-    }
-  }
-  if (failures.length > 0) {
+  // Every game's line was already frozen when it was staged (see POST /:id/games).
+  // Publish is just a status transition — this is a defense-in-depth check, not a refetch.
+  const missingSpread = week.games.filter((g) => g.favoriteTeam === null || g.spreadValue === null);
+  if (missingSpread.length > 0) {
     res.status(409).json({
-      error: "Could not resolve a spread for one or more games. Remove or fix them and try again.",
-      failures,
+      error: "Some games are missing a frozen spread. Remove and re-add them, then try again.",
+      gameIds: missingSpread.map((g) => g.id),
     });
     return;
   }
@@ -161,25 +179,10 @@ weeksRouter.post("/:id/publish", async (req, res) => {
     week.games[0].kickoffAt,
   );
 
-  await prisma.$transaction([
-    ...oddsApiGames.map((g) => {
-      const fresh = freshBySportAndId.get(g.sportKey)!.get(g.externalId!)!;
-      return prisma.game.update({
-        where: { id: g.id },
-        data: {
-          favoriteTeam: fresh.favoriteTeam,
-          spreadValue: fresh.spreadValue,
-          spreadSource: "odds_api",
-          spreadBookmakerKey: fresh.spreadBookmakerKey,
-          spreadCapturedAt: new Date(),
-        },
-      });
-    }),
-    prisma.week.update({
-      where: { id: week.id },
-      data: { status: "published", publishedAt: new Date(), lockAt },
-    }),
-  ]);
+  await prisma.week.update({
+    where: { id: week.id },
+    data: { status: "published", publishedAt: new Date(), lockAt },
+  });
 
   const updated = await getWeekWithLeagueId(week.id);
   res.json(updated!.week);
