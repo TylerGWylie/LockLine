@@ -7,6 +7,13 @@ export async function requireCommissionerForLeague(leagueId: string, userId: str
   return membership?.role === "commissioner";
 }
 
+export async function isLeagueMember(leagueId: string, userId: string) {
+  const membership = await prisma.leagueMembership.findUnique({
+    where: { leagueId_userId: { leagueId, userId } },
+  });
+  return membership !== null;
+}
+
 export async function getWeekWithLeagueId(weekId: string) {
   const week = await prisma.week.findUnique({
     where: { id: weekId },

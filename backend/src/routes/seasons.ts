@@ -2,7 +2,8 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
 import { createWeekSchema } from "../schemas/week";
 import { prisma } from "../services/prisma";
-import { requireCommissionerForLeague } from "../services/authorization";
+import { isLeagueMember, requireCommissionerForLeague } from "../services/authorization";
+import { computeSeasonStandings } from "../services/standings";
 
 export const seasonsRouter = Router();
 seasonsRouter.use(requireAuth);
@@ -52,4 +53,18 @@ seasonsRouter.post("/:id/weeks", async (req, res) => {
     data: { seasonId: season.id, weekNumber: parsed.data.weekNumber, label: parsed.data.label },
   });
   res.status(201).json(week);
+});
+
+seasonsRouter.get("/:id/standings", async (req, res) => {
+  const season = await prisma.season.findUnique({ where: { id: req.params.id } });
+  if (!season) {
+    res.status(404).json({ error: "Season not found" });
+    return;
+  }
+  if (!(await isLeagueMember(season.leagueId, req.userId!))) {
+    res.status(403).json({ error: "You are not a member of this league" });
+    return;
+  }
+
+  res.json(await computeSeasonStandings(season.id));
 });

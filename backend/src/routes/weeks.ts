@@ -1,9 +1,16 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
-import { addGamesSchema, correctLineSchema, lockOverrideSchema } from "../schemas/week";
+import { addGamesSchema, correctLineSchema, lockOverrideSchema, setScoreSchema } from "../schemas/week";
 import { prisma } from "../services/prisma";
-import { getWeekWithLeagueId, requireCommissionerForLeague } from "../services/authorization";
+import {
+  getWeekWithLeagueId,
+  isLeagueMember,
+  requireCommissionerForLeague,
+} from "../services/authorization";
 import { getFreshSpreadsByExternalId, OddsEvent } from "../services/oddsApi";
+import { checkAndGradeWeek, gradePicksForGame } from "../services/grading";
+import { pollAndGradeScores } from "../jobs/gradeWeeks";
+import { computeWeekStandings } from "../services/standings";
 
 export const weeksRouter = Router();
 weeksRouter.use(requireAuth);
@@ -265,4 +272,95 @@ weeksRouter.patch("/:id/lock-override", async (req, res) => {
     data: { lockAt: new Date(parsed.data.lockAt), lockOverrideAt: new Date() },
   });
   res.json(week);
+});
+
+weeksRouter.patch("/:id/games/:gameId/score", async (req, res) => {
+  const parsed = setScoreSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const found = await getWeekWithLeagueId(req.params.id);
+  if (!found) {
+    res.status(404).json({ error: "Week not found" });
+    return;
+  }
+  if (!(await requireCommissionerForLeague(found.leagueId, req.userId!))) {
+    res.status(403).json({ error: "Only the commissioner can enter scores" });
+    return;
+  }
+
+  const game = await prisma.game.findFirst({ where: { id: req.params.gameId, weekId: req.params.id } });
+  if (!game) {
+    res.status(404).json({ error: "Game not found in this week" });
+    return;
+  }
+  if (game.status === "void") {
+    res.status(409).json({ error: "This game has been voided and can't be scored" });
+    return;
+  }
+
+  await prisma.game.update({
+    where: { id: game.id },
+    data: { homeScore: parsed.data.homeScore, awayScore: parsed.data.awayScore, status: "final" },
+  });
+  await gradePicksForGame(game.id);
+  await checkAndGradeWeek(req.params.id);
+
+  res.status(204).send();
+});
+
+weeksRouter.patch("/:id/games/:gameId/void", async (req, res) => {
+  const found = await getWeekWithLeagueId(req.params.id);
+  if (!found) {
+    res.status(404).json({ error: "Week not found" });
+    return;
+  }
+  if (!(await requireCommissionerForLeague(found.leagueId, req.userId!))) {
+    res.status(403).json({ error: "Only the commissioner can void a game" });
+    return;
+  }
+
+  const game = await prisma.game.findFirst({ where: { id: req.params.gameId, weekId: req.params.id } });
+  if (!game) {
+    res.status(404).json({ error: "Game not found in this week" });
+    return;
+  }
+
+  await prisma.game.update({ where: { id: game.id }, data: { status: "void" } });
+  await gradePicksForGame(game.id);
+  await checkAndGradeWeek(req.params.id);
+
+  res.status(204).send();
+});
+
+weeksRouter.post("/:id/refresh-scores", async (req, res) => {
+  const found = await getWeekWithLeagueId(req.params.id);
+  if (!found) {
+    res.status(404).json({ error: "Week not found" });
+    return;
+  }
+  if (!(await requireCommissionerForLeague(found.leagueId, req.userId!))) {
+    res.status(403).json({ error: "Only the commissioner can refresh scores" });
+    return;
+  }
+
+  await pollAndGradeScores();
+  const updated = await getWeekWithLeagueId(req.params.id);
+  res.json(updated!.week);
+});
+
+weeksRouter.get("/:id/standings", async (req, res) => {
+  const found = await getWeekWithLeagueId(req.params.id);
+  if (!found) {
+    res.status(404).json({ error: "Week not found" });
+    return;
+  }
+  if (!(await isLeagueMember(found.leagueId, req.userId!))) {
+    res.status(403).json({ error: "You are not a member of this league" });
+    return;
+  }
+
+  res.json(await computeWeekStandings(req.params.id));
 });
