@@ -15,9 +15,21 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { apiFetch, ApiError } from "../api/client";
 import type { Game, Pick } from "../types";
+
+function dayLabel(kickoffAt: string): string {
+  return new Date(kickoffAt).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function timeLabel(kickoffAt: string): string {
+  return new Date(kickoffAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
 
 interface PicksRankerProps {
   weekId: string;
@@ -123,21 +135,25 @@ export function PicksRanker({ weekId, teamId, games, locked }: PicksRankerProps)
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={order} strategy={verticalListSortingStrategy}>
           <ul className="list">
-            {order.map((gameId) => {
+            {order.map((gameId, index) => {
               const game = gamesById.get(gameId);
               if (!game) return null;
+              const prevGame = index > 0 ? gamesById.get(order[index - 1]) : undefined;
+              const showDayHeader = !prevGame || dayLabel(game.kickoffAt) !== dayLabel(prevGame.kickoffAt);
               return (
-                <SortableRow
-                  key={gameId}
-                  id={gameId}
-                  confidence={confidenceFor(gameId)}
-                  game={game}
-                  side={sideByGame[gameId]}
-                  disabled={locked}
-                  onPickSide={(side) =>
-                    setSideByGame((current) => ({ ...current, [gameId]: side }))
-                  }
-                />
+                <Fragment key={gameId}>
+                  {showDayHeader && <li className="day-header">{dayLabel(game.kickoffAt)}</li>}
+                  <SortableRow
+                    id={gameId}
+                    confidence={confidenceFor(gameId)}
+                    game={game}
+                    side={sideByGame[gameId]}
+                    disabled={locked}
+                    onPickSide={(side) =>
+                      setSideByGame((current) => ({ ...current, [gameId]: side }))
+                    }
+                  />
+                </Fragment>
               );
             })}
           </ul>
@@ -211,7 +227,12 @@ function SortableRow({ id, confidence, game, side, disabled, onPickSide }: Sorta
             {game.awayTeam} {signedSpread(awaySpread)}
           </button>
         </div>
-        {game.status !== "scheduled" && <div className="muted">{game.status}</div>}
+        <div className="muted">
+          {timeLabel(game.kickoffAt)}
+          {game.status === "final" && ` · Final: ${game.awayScore}-${game.homeScore}`}
+          {game.status === "in_progress" && ` · In progress: ${game.awayScore}-${game.homeScore}`}
+          {game.status === "void" && " · Voided"}
+        </div>
       </div>
     </li>
   );

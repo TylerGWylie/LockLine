@@ -161,6 +161,19 @@ button:disabled {
   margin: 0;
 }
 
+.day-header {
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 16px 0 6px;
+}
+
+.day-header:first-child {
+  margin-top: 0;
+}
+
 .ranker-item {
   display: flex;
   align-items: center;
