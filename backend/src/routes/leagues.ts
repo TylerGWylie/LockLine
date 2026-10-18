@@ -1,0 +1,153 @@
+import { Router } from "express";
+import { requireAuth } from "../middleware/auth";
+import { createLeagueSchema, createTeamSchema, joinLeagueSchema } from "../schemas/league";
+import { prisma } from "../services/prisma";
+import { generateInviteCode } from "../utils/inviteCode";
+
+export const leaguesRouter = Router();
+leaguesRouter.use(requireAuth);
+
+async function getCurrentSeason(leagueId: string) {
+  return prisma.season.findFirst({
+    where: { leagueId, status: { not: "complete" } },
+    orderBy: { label: "desc" },
+  });
+}
+
+leaguesRouter.post("/", async (req, res) => {
+  const parsed = createLeagueSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const { name, seasonLabel } = parsed.data;
+
+  const league = await prisma.league.create({
+    data: {
+      name,
+      inviteCode: generateInviteCode(),
+      memberships: { create: { userId: req.userId!, role: "commissioner" } },
+      seasons: { create: { label: seasonLabel, status: "active" } },
+    },
+    include: { seasons: true },
+  });
+
+  res.status(201).json(league);
+});
+
+leaguesRouter.get("/mine", async (req, res) => {
+  const memberships = await prisma.leagueMembership.findMany({
+    where: { userId: req.userId! },
+    include: { league: true },
+  });
+  res.json(memberships.map((m) => ({ ...m.league, role: m.role })));
+});
+
+leaguesRouter.post("/:id/invite-code/rotate", async (req, res) => {
+  const membership = await prisma.leagueMembership.findUnique({
+    where: { leagueId_userId: { leagueId: req.params.id, userId: req.userId! } },
+  });
+  if (!membership || membership.role !== "commissioner") {
+    res.status(403).json({ error: "Only the commissioner can rotate the invite code" });
+    return;
+  }
+
+  const league = await prisma.league.update({
+    where: { id: req.params.id },
+    data: { inviteCode: generateInviteCode() },
+  });
+  res.json({ inviteCode: league.inviteCode });
+});
+
+leaguesRouter.post("/join", async (req, res) => {
+  const parsed = joinLeagueSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const league = await prisma.league.findUnique({ where: { inviteCode: parsed.data.inviteCode } });
+  if (!league) {
+    res.status(404).json({ error: "Invalid invite code" });
+    return;
+  }
+
+  const membership = await prisma.leagueMembership.upsert({
+    where: { leagueId_userId: { leagueId: league.id, userId: req.userId! } },
+    create: { leagueId: league.id, userId: req.userId!, role: "member" },
+    update: {},
+  });
+
+  res.status(201).json({ league, role: membership.role });
+});
+
+leaguesRouter.get("/:id/teams", async (req, res) => {
+  const season = await getCurrentSeason(req.params.id);
+  if (!season) {
+    res.json([]);
+    return;
+  }
+
+  const teams = await prisma.team.findMany({
+    where: { leagueId: req.params.id, seasonEntries: { some: { seasonId: season.id } } },
+    include: { memberships: { include: { user: { select: { id: true, displayName: true } } } } },
+  });
+  res.json(teams);
+});
+
+leaguesRouter.post("/:id/teams", async (req, res) => {
+  const parsed = createTeamSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const membership = await prisma.leagueMembership.findUnique({
+    where: { leagueId_userId: { leagueId: req.params.id, userId: req.userId! } },
+  });
+  if (!membership) {
+    res.status(403).json({ error: "You must join this league before creating a team" });
+    return;
+  }
+
+  const season = await getCurrentSeason(req.params.id);
+  if (!season) {
+    res.status(409).json({ error: "This league has no active season yet" });
+    return;
+  }
+
+  const team = await prisma.team.create({
+    data: {
+      leagueId: req.params.id,
+      name: parsed.data.name,
+      seasonEntries: { create: { seasonId: season.id } },
+      memberships: { create: { userId: req.userId! } },
+    },
+  });
+
+  res.status(201).json(team);
+});
+
+leaguesRouter.post("/:id/teams/:teamId/join", async (req, res) => {
+  const membership = await prisma.leagueMembership.findUnique({
+    where: { leagueId_userId: { leagueId: req.params.id, userId: req.userId! } },
+  });
+  if (!membership) {
+    res.status(403).json({ error: "You must join this league before joining a team" });
+    return;
+  }
+
+  const team = await prisma.team.findFirst({ where: { id: req.params.teamId, leagueId: req.params.id } });
+  if (!team) {
+    res.status(404).json({ error: "Team not found in this league" });
+    return;
+  }
+
+  await prisma.teamMembership.upsert({
+    where: { teamId_userId: { teamId: team.id, userId: req.userId! } },
+    create: { teamId: team.id, userId: req.userId! },
+    update: {},
+  });
+
+  res.status(204).send();
+});

@@ -1,5 +1,7 @@
 import cors from "cors";
 import express from "express";
+import { authRouter } from "./routes/auth";
+import { leaguesRouter } from "./routes/leagues";
 
 export function createApp() {
   const app = express();
@@ -10,6 +12,9 @@ export function createApp() {
   app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
   });
+
+  app.use("/auth", authRouter);
+  app.use("/leagues", leaguesRouter);
 
   return app;
 }
