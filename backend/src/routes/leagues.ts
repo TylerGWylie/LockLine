@@ -111,9 +111,21 @@ leaguesRouter.get("/:id/teams", async (req, res) => {
 
   const teams = await prisma.team.findMany({
     where: { leagueId: req.params.id, seasonEntries: { some: { seasonId: season.id } } },
-    include: { memberships: { include: { user: { select: { id: true, displayName: true } } } } },
+    include: {
+      memberships: {
+        where: { status: "active" },
+        include: { user: { select: { id: true, displayName: true } } },
+      },
+    },
   });
-  res.json(teams);
+
+  const myMemberships = await prisma.teamMembership.findMany({
+    where: { userId: req.userId!, teamId: { in: teams.map((t) => t.id) } },
+    select: { teamId: true, status: true },
+  });
+  const myStatusByTeam = new Map(myMemberships.map((m) => [m.teamId, m.status]));
+
+  res.json(teams.map((t) => ({ ...t, myStatus: myStatusByTeam.get(t.id) ?? null })));
 });
 
 leaguesRouter.post("/:id/teams", async (req, res) => {
@@ -141,8 +153,9 @@ leaguesRouter.post("/:id/teams", async (req, res) => {
     data: {
       leagueId: req.params.id,
       name: parsed.data.name,
+      createdByUserId: req.userId!,
       seasonEntries: { create: { seasonId: season.id } },
-      memberships: { create: { userId: req.userId! } },
+      memberships: { create: { userId: req.userId!, status: "active" } },
     },
   });
 
@@ -154,7 +167,7 @@ leaguesRouter.post("/:id/teams/:teamId/join", async (req, res) => {
     where: { leagueId_userId: { leagueId: req.params.id, userId: req.userId! } },
   });
   if (!membership) {
-    res.status(403).json({ error: "You must join this league before joining a team" });
+    res.status(403).json({ error: "You must join this league before requesting to join a team" });
     return;
   }
 
@@ -164,10 +177,80 @@ leaguesRouter.post("/:id/teams/:teamId/join", async (req, res) => {
     return;
   }
 
-  await prisma.teamMembership.upsert({
+  const existing = await prisma.teamMembership.findUnique({
     where: { teamId_userId: { teamId: team.id, userId: req.userId! } },
-    create: { teamId: team.id, userId: req.userId! },
-    update: {},
+  });
+  if (existing?.status === "active") {
+    res.status(409).json({ error: "You're already on this team" });
+    return;
+  }
+  if (existing?.status === "pending") {
+    res.status(409).json({ error: "Your request to join is already pending approval" });
+    return;
+  }
+
+  await prisma.teamMembership.create({
+    data: { teamId: team.id, userId: req.userId!, status: "pending" },
+  });
+
+  res.status(202).json({ status: "pending" });
+});
+
+leaguesRouter.get("/:id/teams/:teamId/join-requests", async (req, res) => {
+  const team = await prisma.team.findFirst({ where: { id: req.params.teamId, leagueId: req.params.id } });
+  if (!team) {
+    res.status(404).json({ error: "Team not found in this league" });
+    return;
+  }
+  if (team.createdByUserId !== req.userId) {
+    res.status(403).json({ error: "Only the team's creator can view join requests" });
+    return;
+  }
+
+  const requests = await prisma.teamMembership.findMany({
+    where: { teamId: team.id, status: "pending" },
+    include: { user: { select: { id: true, displayName: true, email: true } } },
+    orderBy: { joinedAt: "asc" },
+  });
+  res.json(requests);
+});
+
+leaguesRouter.post("/:id/teams/:teamId/join-requests/:userId/approve", async (req, res) => {
+  const team = await prisma.team.findFirst({ where: { id: req.params.teamId, leagueId: req.params.id } });
+  if (!team) {
+    res.status(404).json({ error: "Team not found in this league" });
+    return;
+  }
+  if (team.createdByUserId !== req.userId) {
+    res.status(403).json({ error: "Only the team's creator can approve join requests" });
+    return;
+  }
+
+  const result = await prisma.teamMembership.updateMany({
+    where: { teamId: team.id, userId: req.params.userId, status: "pending" },
+    data: { status: "active" },
+  });
+  if (result.count === 0) {
+    res.status(404).json({ error: "No pending request for this user" });
+    return;
+  }
+
+  res.status(204).send();
+});
+
+leaguesRouter.post("/:id/teams/:teamId/join-requests/:userId/reject", async (req, res) => {
+  const team = await prisma.team.findFirst({ where: { id: req.params.teamId, leagueId: req.params.id } });
+  if (!team) {
+    res.status(404).json({ error: "Team not found in this league" });
+    return;
+  }
+  if (team.createdByUserId !== req.userId) {
+    res.status(403).json({ error: "Only the team's creator can reject join requests" });
+    return;
+  }
+
+  await prisma.teamMembership.deleteMany({
+    where: { teamId: team.id, userId: req.params.userId, status: "pending" },
   });
 
   res.status(204).send();

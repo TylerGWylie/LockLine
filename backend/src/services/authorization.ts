@@ -26,6 +26,6 @@ export async function getWeekWithLeagueId(weekId: string) {
 export async function getTeamInLeague(teamId: string, leagueId: string) {
   return prisma.team.findFirst({
     where: { id: teamId, leagueId },
-    include: { memberships: true },
+    include: { memberships: { where: { status: "active" } } },
   });
 }

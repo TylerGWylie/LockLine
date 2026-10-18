@@ -42,6 +42,11 @@ enum Side {
   away
 }
 
+enum TeamMembershipStatus {
+  pending
+  active
+}
+
 enum PickResult {
   pending
   covered
@@ -62,6 +67,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   leagueMemberships  LeagueMembership[]
   teamMemberships    TeamMembership[]
+  createdTeams       Team[]              @relation("TeamCreatedBy")
   editedPicks        Pick[]              @relation("PickLastEditedBy")
   spreadCorrections  SpreadCorrection[]
 
@@ -137,12 +143,14 @@ model Season {
 }
 
 model Team {
-  id        String   @id @default(uuid())
-  leagueId  String
-  name      String
-  createdAt DateTime @default(now())
+  id              String   @id @default(uuid())
+  leagueId        String
+  name            String
+  createdByUserId String?
+  createdAt       DateTime @default(now())
 
   league            League            @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  createdByUser     User?             @relation("TeamCreatedBy", fields: [createdByUserId], references: [id])
   memberships       TeamMembership[]
   seasonEntries     TeamSeasonEntry[]
   picks             Pick[]
@@ -164,7 +172,8 @@ model TeamSeasonEntry {
 model TeamMembership {
   teamId   String
   userId   String
-  joinedAt DateTime @default(now())
+  status   TeamMembershipStatus @default(active)
+  joinedAt DateTime             @default(now())
 
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

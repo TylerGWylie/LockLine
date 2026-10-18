@@ -66,7 +66,9 @@ export async function checkAndGradeWeek(weekId: string): Promise<void> {
       season: {
         include: {
           teamSeasonEntries: {
-            include: { team: { include: { memberships: { include: { user: true } } } } },
+            include: {
+              team: { include: { memberships: { where: { status: "active" }, include: { user: true } } } },
+            },
           },
         },
       },
