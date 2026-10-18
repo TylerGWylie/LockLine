@@ -29,6 +29,7 @@ export interface Team {
   createdByUserId: string | null;
   memberships?: { userId: string; user: { id: string; displayName: string } }[];
   myStatus?: "pending" | "active" | null;
+  leagueName?: string;
 }
 
 export interface JoinRequest {

@@ -1,11 +1,15 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { CommissionerLeaguePage } from "./pages/CommissionerLeaguePage";
+import { CommissionerLeaguesPage } from "./pages/CommissionerLeaguesPage";
+import { CommissionerWeekPage } from "./pages/CommissionerWeekPage";
 import { HomePage } from "./pages/HomePage";
 import { LeaguePage } from "./pages/LeaguePage";
 import { LoginPage } from "./pages/LoginPage";
 import { SignupPage } from "./pages/SignupPage";
 import { StandingsPage } from "./pages/StandingsPage";
+import { TeamSettingsPage } from "./pages/TeamSettingsPage";
 import { WeekPage } from "./pages/WeekPage";
 import { WhatIfPage } from "./pages/WhatIfPage";
 
@@ -53,6 +57,38 @@ function App() {
             element={
               <ProtectedRoute>
                 <WhatIfPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/commissioner"
+            element={
+              <ProtectedRoute>
+                <CommissionerLeaguesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/commissioner/:leagueId"
+            element={
+              <ProtectedRoute>
+                <CommissionerLeaguePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/commissioner/:leagueId/weeks/:weekId"
+            element={
+              <ProtectedRoute>
+                <CommissionerWeekPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/team-settings"
+            element={
+              <ProtectedRoute>
+                <TeamSettingsPage />
               </ProtectedRoute>
             }
           />

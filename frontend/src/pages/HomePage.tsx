@@ -1,11 +1,9 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch, ApiError } from "../api/client";
-import { useAuth } from "../auth/AuthContext";
 import type { League } from "../types";
 
 export function HomePage() {
-  const { user, logout } = useAuth();
   const [leagues, setLeagues] = useState<League[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,12 +53,7 @@ export function HomePage() {
 
   return (
     <div className="page">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h1>My leagues</h1>
-        <button className="secondary" onClick={logout}>
-          Log out ({user?.displayName})
-        </button>
-      </div>
+      <h1>My leagues</h1>
 
       {error && <div className="error">{error}</div>}
 

@@ -5,6 +5,7 @@ import { leaguesRouter } from "./routes/leagues";
 import { oddsRouter } from "./routes/odds";
 import { picksRouter } from "./routes/picks";
 import { seasonsRouter } from "./routes/seasons";
+import { teamsRouter } from "./routes/teams";
 import { weeksRouter } from "./routes/weeks";
 
 export function createApp() {
@@ -21,6 +22,7 @@ export function createApp() {
   app.use("/leagues", leaguesRouter);
   app.use("/odds", oddsRouter);
   app.use("/seasons", seasonsRouter);
+  app.use("/teams", teamsRouter);
   app.use("/weeks", weeksRouter);
   app.use("/weeks", picksRouter);
 
