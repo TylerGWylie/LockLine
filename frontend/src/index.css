@@ -141,7 +141,14 @@ button:disabled {
   padding: 10px 12px;
   margin-bottom: 8px;
   background: var(--bg);
+}
+
+.drag-handle {
   cursor: grab;
+  touch-action: none;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  padding: 4px;
 }
 
 .ranker-item .confidence {

@@ -174,7 +174,15 @@ function SortableRow({ id, confidence, game, side, disabled, onPickSide }: Sorta
   const style = { transform: CSS.Transform.toString(transform), transition };
 
   return (
-    <li ref={setNodeRef} style={style} className="ranker-item" {...(disabled ? {} : attributes)} {...(disabled ? {} : listeners)}>
+    <li ref={setNodeRef} style={style} className="ranker-item">
+      <span
+        className="drag-handle"
+        aria-label="Drag to reorder"
+        {...(disabled ? {} : attributes)}
+        {...(disabled ? {} : listeners)}
+      >
+        ⠿
+      </span>
       <span className="confidence">{confidence}</span>
       <div style={{ flex: 1 }}>
         <div className="row">
@@ -182,10 +190,7 @@ function SortableRow({ id, confidence, game, side, disabled, onPickSide }: Sorta
             type="button"
             className={side === "home" ? "" : "secondary"}
             disabled={disabled}
-            onClick={(e) => {
-              e.stopPropagation();
-              onPickSide("home");
-            }}
+            onClick={() => onPickSide("home")}
           >
             {game.homeTeam}
           </button>
@@ -193,10 +198,7 @@ function SortableRow({ id, confidence, game, side, disabled, onPickSide }: Sorta
             type="button"
             className={side === "away" ? "" : "secondary"}
             disabled={disabled}
-            onClick={(e) => {
-              e.stopPropagation();
-              onPickSide("away");
-            }}
+            onClick={() => onPickSide("away")}
           >
             {game.awayTeam}
           </button>
