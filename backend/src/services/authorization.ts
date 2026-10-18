@@ -15,3 +15,10 @@ export async function getWeekWithLeagueId(weekId: string) {
   if (!week) return null;
   return { week, leagueId: week.season.leagueId };
 }
+
+export async function getTeamInLeague(teamId: string, leagueId: string) {
+  return prisma.team.findFirst({
+    where: { id: teamId, leagueId },
+    include: { memberships: true },
+  });
+}

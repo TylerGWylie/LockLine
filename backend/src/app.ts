@@ -3,6 +3,7 @@ import express from "express";
 import { authRouter } from "./routes/auth";
 import { leaguesRouter } from "./routes/leagues";
 import { oddsRouter } from "./routes/odds";
+import { picksRouter } from "./routes/picks";
 import { seasonsRouter } from "./routes/seasons";
 import { weeksRouter } from "./routes/weeks";
 
@@ -21,6 +22,7 @@ export function createApp() {
   app.use("/odds", oddsRouter);
   app.use("/seasons", seasonsRouter);
   app.use("/weeks", weeksRouter);
+  app.use("/weeks", picksRouter);
 
   return app;
 }
