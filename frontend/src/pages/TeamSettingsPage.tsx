@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch, ApiError } from "../api/client";
+import { ShareLink } from "../components/ShareLink";
 import type { JoinRequest, Team } from "../types";
 
 export function TeamSettingsPage() {
@@ -92,6 +93,15 @@ function TeamSettingsCard({ team, onChange }: { team: Team; onChange: () => void
       <div className="muted" style={{ marginTop: 8 }}>
         Members: {team.memberships?.map((m) => m.user.displayName).join(", ") || "No members"}
       </div>
+
+      {team.leagueInviteCode && (
+        <div style={{ marginTop: 8 }}>
+          <strong className="muted">Share link to join</strong>
+          <ShareLink
+            url={`${window.location.origin}/join/${team.leagueInviteCode}?team=${team.id}`}
+          />
+        </div>
+      )}
 
       {isCreator && requests && requests.length > 0 && (
         <div style={{ marginTop: 8 }}>

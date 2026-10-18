@@ -1,11 +1,13 @@
 import { type FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 export function SignupPage() {
   const { signup } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -19,7 +21,7 @@ export function SignupPage() {
     setSubmitting(true);
     try {
       await signup(email, password, displayName, phone || undefined);
-      navigate("/");
+      navigate(redirect);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
     } finally {
@@ -59,7 +61,10 @@ export function SignupPage() {
         </button>
       </form>
       <p className="muted">
-        Already have an account? <Link to="/login">Log in</Link>
+        Already have an account?{" "}
+        <Link to={`/login${redirect !== "/" ? `?redirect=${encodeURIComponent(redirect)}` : ""}`}>
+          Log in
+        </Link>
       </p>
     </div>
   );

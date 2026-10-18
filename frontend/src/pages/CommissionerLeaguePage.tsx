@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiFetch, ApiError } from "../api/client";
+import { ShareLink } from "../components/ShareLink";
 import type { LeagueDetail, Week } from "../types";
 
 export function CommissionerLeaguePage() {
@@ -63,6 +64,10 @@ export function CommissionerLeaguePage() {
       </p>
       <h1>{league.name}</h1>
       {error && <div className="error">{error}</div>}
+
+      <h2>Share link to join</h2>
+      <p className="muted">Anyone with this link can join {league.name} and request a team.</p>
+      <ShareLink url={`${window.location.origin}/join/${league.inviteCode}`} />
 
       <h2>Weeks</h2>
       {weeks === null ? (

@@ -5,6 +5,7 @@ import { CommissionerLeaguePage } from "./pages/CommissionerLeaguePage";
 import { CommissionerLeaguesPage } from "./pages/CommissionerLeaguesPage";
 import { CommissionerWeekPage } from "./pages/CommissionerWeekPage";
 import { HomePage } from "./pages/HomePage";
+import { JoinInvitePage } from "./pages/JoinInvitePage";
 import { JoinTeamPage } from "./pages/JoinTeamPage";
 import { LeaguePage } from "./pages/LeaguePage";
 import { LoginPage } from "./pages/LoginPage";
@@ -21,6 +22,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/join/:code" element={<JoinInvitePage />} />
           <Route
             path="/"
             element={

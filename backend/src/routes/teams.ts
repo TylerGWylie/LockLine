@@ -12,7 +12,7 @@ teamsRouter.get("/mine", async (req, res) => {
     include: {
       team: {
         include: {
-          league: { select: { id: true, name: true } },
+          league: { select: { id: true, name: true, inviteCode: true } },
           memberships: {
             where: { status: "active" },
             include: { user: { select: { id: true, displayName: true } } },
@@ -26,6 +26,7 @@ teamsRouter.get("/mine", async (req, res) => {
     memberships.map((m) => ({
       ...m.team,
       leagueName: m.team.league.name,
+      leagueInviteCode: m.team.league.inviteCode,
     })),
   );
 });

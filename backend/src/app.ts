@@ -1,6 +1,7 @@
 import cors from "cors";
 import express from "express";
 import { authRouter } from "./routes/auth";
+import { inviteRouter } from "./routes/invite";
 import { leaguesRouter } from "./routes/leagues";
 import { oddsRouter } from "./routes/odds";
 import { picksRouter } from "./routes/picks";
@@ -19,6 +20,7 @@ export function createApp() {
   });
 
   app.use("/auth", authRouter);
+  app.use("/invite", inviteRouter);
   app.use("/leagues", leaguesRouter);
   app.use("/odds", oddsRouter);
   app.use("/seasons", seasonsRouter);

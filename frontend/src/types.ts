@@ -30,6 +30,13 @@ export interface Team {
   memberships?: { userId: string; user: { id: string; displayName: string } }[];
   myStatus?: "pending" | "active" | null;
   leagueName?: string;
+  leagueInviteCode?: string;
+}
+
+export interface InvitePreview {
+  id: string;
+  name: string;
+  teams: { id: string; name: string }[];
 }
 
 export interface JoinRequest {
