@@ -11,6 +11,7 @@ import { getFreshSpreadsByExternalId, OddsEvent } from "../services/oddsApi";
 import { checkAndGradeWeek, gradePicksForGame } from "../services/grading";
 import { pollAndGradeScores } from "../jobs/gradeWeeks";
 import { computeWeekStandings } from "../services/standings";
+import { ensureHalfPointSpread } from "../utils/spread";
 
 export const weeksRouter = Router();
 weeksRouter.use(requireAuth);
@@ -97,7 +98,7 @@ weeksRouter.post("/:id/games", async (req, res) => {
             kickoffAt: new Date(game.kickoffAt),
             orderIndex: startIndex + i,
             favoriteTeam: game.favoriteTeam,
-            spreadValue: game.spreadValue,
+            spreadValue: ensureHalfPointSpread(game.spreadValue),
             spreadSource: "manual",
             spreadCapturedAt: new Date(),
           },
@@ -116,7 +117,7 @@ weeksRouter.post("/:id/games", async (req, res) => {
           kickoffAt: new Date(game.kickoffAt),
           orderIndex: startIndex + i,
           favoriteTeam: fresh.favoriteTeam,
-          spreadValue: fresh.spreadValue,
+          spreadValue: ensureHalfPointSpread(fresh.spreadValue!),
           spreadSource: "odds_api",
           spreadBookmakerKey: fresh.spreadBookmakerKey,
           spreadCapturedAt: new Date(),
@@ -226,7 +227,8 @@ weeksRouter.patch("/:id/games/:gameId/correct-line", async (req, res) => {
     return;
   }
 
-  const { favoriteTeam, spreadValue, reason } = parsed.data;
+  const { favoriteTeam, reason } = parsed.data;
+  const spreadValue = ensureHalfPointSpread(parsed.data.spreadValue);
   await prisma.$transaction([
     prisma.spreadCorrection.create({
       data: {
