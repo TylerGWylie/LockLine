@@ -43,6 +43,27 @@ leaguesRouter.get("/mine", async (req, res) => {
   res.json(memberships.map((m) => ({ ...m.league, role: m.role })));
 });
 
+leaguesRouter.get("/:id", async (req, res) => {
+  const membership = await prisma.leagueMembership.findUnique({
+    where: { leagueId_userId: { leagueId: req.params.id, userId: req.userId! } },
+  });
+  if (!membership) {
+    res.status(403).json({ error: "You are not a member of this league" });
+    return;
+  }
+
+  const league = await prisma.league.findUnique({
+    where: { id: req.params.id },
+    include: { seasons: true },
+  });
+  if (!league) {
+    res.status(404).json({ error: "League not found" });
+    return;
+  }
+
+  res.json({ ...league, role: membership.role });
+});
+
 leaguesRouter.post("/:id/invite-code/rotate", async (req, res) => {
   const membership = await prisma.leagueMembership.findUnique({
     where: { leagueId_userId: { leagueId: req.params.id, userId: req.userId! } },

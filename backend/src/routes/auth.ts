@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireAuth } from "../middleware/auth";
 import { prisma } from "../services/prisma";
 import { sendMail } from "../services/mailer";
 import {
@@ -18,6 +19,18 @@ import {
 } from "../utils/tokens";
 
 export const authRouter = Router();
+
+authRouter.get("/me", requireAuth, async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.userId! },
+    select: { id: true, email: true, displayName: true },
+  });
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  res.json(user);
+});
 
 async function issueTokenPair(userId: string) {
   const accessToken = signAccessToken({ userId });
