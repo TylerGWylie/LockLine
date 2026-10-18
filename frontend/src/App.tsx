@@ -5,6 +5,7 @@ import { CommissionerLeaguePage } from "./pages/CommissionerLeaguePage";
 import { CommissionerLeaguesPage } from "./pages/CommissionerLeaguesPage";
 import { CommissionerWeekPage } from "./pages/CommissionerWeekPage";
 import { HomePage } from "./pages/HomePage";
+import { JoinTeamPage } from "./pages/JoinTeamPage";
 import { LeaguePage } from "./pages/LeaguePage";
 import { LoginPage } from "./pages/LoginPage";
 import { SignupPage } from "./pages/SignupPage";
@@ -89,6 +90,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <TeamSettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/join-team"
+            element={
+              <ProtectedRoute>
+                <JoinTeamPage />
               </ProtectedRoute>
             }
           />

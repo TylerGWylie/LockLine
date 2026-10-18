@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
 import { createLeagueSchema, createTeamSchema, joinLeagueSchema } from "../schemas/league";
+import { getCurrentWeekForLeague } from "../services/currentWeek";
 import { prisma } from "../services/prisma";
 import { generateInviteCode } from "../utils/inviteCode";
 
@@ -62,6 +63,23 @@ leaguesRouter.get("/:id", async (req, res) => {
   }
 
   res.json({ ...league, role: membership.role });
+});
+
+leaguesRouter.get("/:id/current-week", async (req, res) => {
+  const membership = await prisma.leagueMembership.findUnique({
+    where: { leagueId_userId: { leagueId: req.params.id, userId: req.userId! } },
+  });
+  if (!membership) {
+    res.status(403).json({ error: "You are not a member of this league" });
+    return;
+  }
+
+  const week = await getCurrentWeekForLeague(req.params.id);
+  if (!week) {
+    res.status(404).json({ error: "No weeks have been created yet" });
+    return;
+  }
+  res.json(week);
 });
 
 leaguesRouter.post("/:id/invite-code/rotate", async (req, res) => {

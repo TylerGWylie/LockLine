@@ -1,11 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import type { Team } from "../types";
 
 export function AccountMenu() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const [hasTeam, setHasTeam] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    apiFetch<Team[]>("/teams/mine")
+      .then((teams) => setHasTeam(teams.length > 0))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -28,6 +37,11 @@ export function AccountMenu() {
           <Link to="/team-settings" onClick={() => setOpen(false)}>
             Team Settings
           </Link>
+          {hasTeam && (
+            <Link to="/join-team" onClick={() => setOpen(false)}>
+              Join another team
+            </Link>
+          )}
           <button className="secondary" onClick={logout}>
             Log out
           </button>
