@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiFetch, ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import type { LeagueDetail, Team, Week } from "../types";
+import type { JoinRequest, LeagueDetail, Team, Week } from "../types";
 
 export function LeaguePage() {
   const { leagueId } = useParams<{ leagueId: string }>();
@@ -80,10 +80,6 @@ export function LeaguePage() {
     return <div className="page">{error ? <div className="error">{error}</div> : "Loading…"}</div>;
   }
 
-  const myTeamIds = new Set(
-    teams.filter((t) => t.memberships?.some((m) => m.userId === user?.id)).map((t) => t.id),
-  );
-
   return (
     <div className="page">
       <p>
@@ -99,15 +95,14 @@ export function LeaguePage() {
       {teams.length === 0 && <p className="muted">No teams yet.</p>}
       <ul className="list">
         {teams.map((t) => (
-          <li key={t.id} className="card">
-            <strong>{t.name}</strong>
-            <div className="muted">{t.memberships?.map((m) => m.user.displayName).join(", ") || "No members"}</div>
-            {!myTeamIds.has(t.id) && (
-              <button className="secondary" onClick={() => handleJoinTeam(t.id)}>
-                Join this team
-              </button>
-            )}
-          </li>
+          <TeamCard
+            key={t.id}
+            leagueId={leagueId!}
+            team={t}
+            isCreator={t.createdByUserId === user?.id}
+            onJoin={() => handleJoinTeam(t.id)}
+            onChange={loadAll}
+          />
         ))}
       </ul>
 
@@ -164,5 +159,79 @@ export function LeaguePage() {
         </>
       )}
     </div>
+  );
+}
+
+function TeamCard({
+  leagueId,
+  team,
+  isCreator,
+  onJoin,
+  onChange,
+}: {
+  leagueId: string;
+  team: Team;
+  isCreator: boolean;
+  onJoin: () => void;
+  onChange: () => void;
+}) {
+  const [requests, setRequests] = useState<JoinRequest[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isCreator) return;
+    apiFetch<JoinRequest[]>(`/leagues/${leagueId}/teams/${team.id}/join-requests`)
+      .then(setRequests)
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load requests"));
+  }, [isCreator, leagueId, team.id]);
+
+  async function respond(userId: string, action: "approve" | "reject") {
+    setError(null);
+    try {
+      await apiFetch(`/leagues/${leagueId}/teams/${team.id}/join-requests/${userId}/${action}`, {
+        method: "POST",
+      });
+      setRequests((current) => current?.filter((r) => r.userId !== userId) ?? null);
+      onChange();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong");
+    }
+  }
+
+  return (
+    <li className="card">
+      <strong>{team.name}</strong>
+      <div className="muted">
+        {team.memberships?.map((m) => m.user.displayName).join(", ") || "No members"}
+      </div>
+      {error && <div className="error">{error}</div>}
+
+      {team.myStatus === "active" && <p className="muted">You're on this team.</p>}
+      {team.myStatus === "pending" && <p className="muted">Your request to join is pending approval.</p>}
+      {!team.myStatus && (
+        <button className="secondary" onClick={onJoin}>
+          Request to join
+        </button>
+      )}
+
+      {isCreator && requests && requests.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <strong className="muted">Pending requests</strong>
+          <ul className="list">
+            {requests.map((r) => (
+              <li key={r.userId} className="row" style={{ justifyContent: "space-between" }}>
+                <span>{r.user.displayName}</span>
+                <span className="row">
+                  <button onClick={() => respond(r.userId, "approve")}>Approve</button>
+                  <button className="danger" onClick={() => respond(r.userId, "reject")}>
+                    Reject
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </li>
   );
 }

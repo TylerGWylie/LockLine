@@ -26,7 +26,15 @@ export interface Team {
   id: string;
   leagueId: string;
   name: string;
+  createdByUserId: string | null;
   memberships?: { userId: string; user: { id: string; displayName: string } }[];
+  myStatus?: "pending" | "active" | null;
+}
+
+export interface JoinRequest {
+  userId: string;
+  joinedAt: string;
+  user: { id: string; displayName: string; email: string };
 }
 
 export interface Week {
