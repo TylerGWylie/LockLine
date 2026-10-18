@@ -31,6 +31,10 @@ function timeLabel(kickoffAt: string): string {
   return new Date(kickoffAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
+function signedSpread(value: number): string {
+  return value > 0 ? `+${value}` : `${value}`;
+}
+
 interface PicksRankerProps {
   weekId: string;
   teamId: string;
@@ -63,6 +67,9 @@ export function PicksRanker({ weekId, teamId, games, locked }: PicksRankerProps)
 
   const gamesById = new Map(games.map((g) => [g.id, g]));
   const n = games.length;
+  const chronological = [...games].sort(
+    (a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime(),
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -128,32 +135,48 @@ export function PicksRanker({ weekId, teamId, games, locked }: PicksRankerProps)
   return (
     <div>
       {error && <div className="error">{error}</div>}
+
+      <h3>Games</h3>
+      <p className="muted">Pick who covers the spread in each game.</p>
+      <ul className="list">
+        {chronological.map((game, index) => {
+          const prevGame = index > 0 ? chronological[index - 1] : undefined;
+          const showDayHeader = !prevGame || dayLabel(game.kickoffAt) !== dayLabel(prevGame.kickoffAt);
+          return (
+            <Fragment key={game.id}>
+              {showDayHeader && <li className="day-header">{dayLabel(game.kickoffAt)}</li>}
+              <ScheduleRow
+                game={game}
+                side={sideByGame[game.id]}
+                disabled={locked}
+                onPickSide={(side) =>
+                  setSideByGame((current) => ({ ...current, [game.id]: side }))
+                }
+              />
+            </Fragment>
+          );
+        })}
+      </ul>
+
+      <h3>Your confidence ranking</h3>
       <p className="muted">
-        Drag to rank most confident (top, {n} pts) to least confident (bottom, 1 pt). Pick a side for
-        every game before saving.
+        Drag to rank most confident (top, {n} pts) to least confident (bottom, 1 pt).
       </p>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={order} strategy={verticalListSortingStrategy}>
           <ul className="list">
-            {order.map((gameId, index) => {
+            {order.map((gameId) => {
               const game = gamesById.get(gameId);
               if (!game) return null;
-              const prevGame = index > 0 ? gamesById.get(order[index - 1]) : undefined;
-              const showDayHeader = !prevGame || dayLabel(game.kickoffAt) !== dayLabel(prevGame.kickoffAt);
               return (
-                <Fragment key={gameId}>
-                  {showDayHeader && <li className="day-header">{dayLabel(game.kickoffAt)}</li>}
-                  <SortableRow
-                    id={gameId}
-                    confidence={confidenceFor(gameId)}
-                    game={game}
-                    side={sideByGame[gameId]}
-                    disabled={locked}
-                    onPickSide={(side) =>
-                      setSideByGame((current) => ({ ...current, [gameId]: side }))
-                    }
-                  />
-                </Fragment>
+                <RankingRow
+                  key={gameId}
+                  id={gameId}
+                  confidence={confidenceFor(gameId)}
+                  game={game}
+                  side={sideByGame[gameId]}
+                  disabled={locked}
+                />
               );
             })}
           </ul>
@@ -176,38 +199,34 @@ export function PicksRanker({ weekId, teamId, games, locked }: PicksRankerProps)
   );
 }
 
-interface SortableRowProps {
-  id: string;
-  confidence: number;
+function GameStatusLine({ game }: { game: Game }) {
+  return (
+    <div className="muted">
+      {timeLabel(game.kickoffAt)}
+      {game.status === "final" && ` · Final: ${game.awayScore}-${game.homeScore}`}
+      {game.status === "in_progress" && ` · In progress: ${game.awayScore}-${game.homeScore}`}
+      {game.status === "void" && " · Voided"}
+    </div>
+  );
+}
+
+function ScheduleRow({
+  game,
+  side,
+  disabled,
+  onPickSide,
+}: {
   game: Game;
   side: "home" | "away" | undefined;
   disabled: boolean;
   onPickSide: (side: "home" | "away") => void;
-}
-
-function signedSpread(value: number): string {
-  return value > 0 ? `+${value}` : `${value}`;
-}
-
-function SortableRow({ id, confidence, game, side, disabled, onPickSide }: SortableRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id, disabled });
-  const style = { transform: CSS.Transform.toString(transform), transition };
-
+}) {
   const spread = game.spreadValue ?? 0;
   const homeSpread = game.favoriteTeam === "home" ? -spread : spread;
   const awaySpread = game.favoriteTeam === "away" ? -spread : spread;
 
   return (
-    <li ref={setNodeRef} style={style} className="ranker-item">
-      <span
-        className="drag-handle"
-        aria-label="Drag to reorder"
-        {...(disabled ? {} : attributes)}
-        {...(disabled ? {} : listeners)}
-      >
-        ⠿
-      </span>
-      <span className="confidence">{confidence}</span>
+    <li className="ranker-item">
       <div style={{ flex: 1 }}>
         <div className="row">
           <button
@@ -227,12 +246,47 @@ function SortableRow({ id, confidence, game, side, disabled, onPickSide }: Sorta
             {game.awayTeam} {signedSpread(awaySpread)}
           </button>
         </div>
-        <div className="muted">
-          {timeLabel(game.kickoffAt)}
-          {game.status === "final" && ` · Final: ${game.awayScore}-${game.homeScore}`}
-          {game.status === "in_progress" && ` · In progress: ${game.awayScore}-${game.homeScore}`}
-          {game.status === "void" && " · Voided"}
-        </div>
+        <GameStatusLine game={game} />
+      </div>
+    </li>
+  );
+}
+
+function RankingRow({
+  id,
+  confidence,
+  game,
+  side,
+  disabled,
+}: {
+  id: string;
+  confidence: number;
+  game: Game;
+  side: "home" | "away" | undefined;
+  disabled: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id, disabled });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  const pickedTeam = side === "home" ? game.homeTeam : side === "away" ? game.awayTeam : null;
+
+  return (
+    <li ref={setNodeRef} style={style} className="ranker-item">
+      <span
+        className="drag-handle"
+        aria-label="Drag to reorder"
+        {...(disabled ? {} : attributes)}
+        {...(disabled ? {} : listeners)}
+      >
+        ⠿
+      </span>
+      <span className="confidence">{confidence}</span>
+      <div style={{ flex: 1 }}>
+        {pickedTeam ? (
+          <strong>{pickedTeam}</strong>
+        ) : (
+          <span className="muted">{game.awayTeam} @ {game.homeTeam} — pick a side above</span>
+        )}
+        <GameStatusLine game={game} />
       </div>
     </li>
   );
