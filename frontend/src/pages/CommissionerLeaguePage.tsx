@@ -34,6 +34,17 @@ export function CommissionerLeaguePage() {
     }
   }
 
+  async function handleGenerateWeeks() {
+    if (!currentSeason) return;
+    setError(null);
+    try {
+      await apiFetch(`/seasons/${currentSeason.id}/generate-weeks`, { method: "POST" });
+      loadWeeks();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to generate weeks");
+    }
+  }
+
   if (!league) {
     return <div className="page">{error ? <div className="error">{error}</div> : "Loading…"}</div>;
   }
@@ -64,6 +75,13 @@ export function CommissionerLeaguePage() {
         created automatically. Remove any week the league won't be competing — for example, to end
         the season early instead of running through the Super Bowl.
       </p>
+      {weeks !== null && weeks.length < 20 && (
+        <p>
+          <button className="secondary" onClick={handleGenerateWeeks}>
+            Fill in the rest of the season's weeks
+          </button>
+        </p>
+      )}
       {weeks === null ? (
         <p className="muted">Loading…</p>
       ) : (
