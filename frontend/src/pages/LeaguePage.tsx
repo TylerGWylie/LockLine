@@ -100,19 +100,24 @@ export function LeaguePage() {
       <h2>Weeks</h2>
       {weeks === null ? (
         <p className="muted">Loading…</p>
-      ) : weeks.length === 0 ? (
-        <p className="muted">No weeks yet.</p>
       ) : (
-        <ul className="list">
-          {weeks.map((w) => (
-            <li key={w.id} className="card">
-              <Link to={`/leagues/${leagueId}/weeks/${w.id}`}>
-                <strong>{w.label}</strong>
-              </Link>
-              <div className="muted">{w.status}</div>
-            </li>
-          ))}
-        </ul>
+        (() => {
+          const published = weeks.filter((w) => w.status !== "draft");
+          return published.length === 0 ? (
+            <p className="muted">The commissioner hasn't published a week yet.</p>
+          ) : (
+            <ul className="list">
+              {published.map((w) => (
+                <li key={w.id} className="card">
+                  <Link to={`/leagues/${leagueId}/weeks/${w.id}`}>
+                    <strong>{w.label}</strong>
+                  </Link>
+                  <div className="muted">{w.status}</div>
+                </li>
+              ))}
+            </ul>
+          );
+        })()
       )}
     </div>
   );

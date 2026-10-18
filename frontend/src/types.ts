@@ -51,6 +51,8 @@ export interface Week {
   weekNumber: number;
   label: string;
   status: "draft" | "published" | "locked" | "graded";
+  startDate: string;
+  endDate: string;
   lockAt: string | null;
   publishedAt: string | null;
   games?: Game[];

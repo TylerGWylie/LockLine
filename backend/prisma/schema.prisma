@@ -188,6 +188,8 @@ model Week {
   weekNumber     Int
   label          String
   status         WeekStatus @default(draft)
+  startDate      DateTime   @default(now())
+  endDate        DateTime   @default(now())
   lockAt         DateTime?
   publishedAt    DateTime?
   lockOverrideAt DateTime?

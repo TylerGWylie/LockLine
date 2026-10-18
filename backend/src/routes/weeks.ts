@@ -26,6 +26,27 @@ weeksRouter.get("/:id", async (req, res) => {
   res.json(found.week);
 });
 
+weeksRouter.delete("/:id", async (req, res) => {
+  const found = await getWeekWithLeagueId(req.params.id);
+  if (!found) {
+    res.status(404).json({ error: "Week not found" });
+    return;
+  }
+  if (!(await requireCommissionerForLeague(found.leagueId, req.userId!))) {
+    res.status(403).json({ error: "Only the commissioner can remove a week" });
+    return;
+  }
+  if (found.week.status !== "draft") {
+    res.status(409).json({
+      error: "Only a week that hasn't been published yet can be removed",
+    });
+    return;
+  }
+
+  await prisma.week.delete({ where: { id: req.params.id } });
+  res.status(204).send();
+});
+
 weeksRouter.post("/:id/games", async (req, res) => {
   const parsed = addGamesSchema.safeParse(req.body);
   if (!parsed.success) {

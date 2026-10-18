@@ -4,6 +4,7 @@ import { createLeagueSchema, createTeamSchema, joinLeagueSchema } from "../schem
 import { getCurrentWeekForLeague } from "../services/currentWeek";
 import { prisma } from "../services/prisma";
 import { generateInviteCode } from "../utils/inviteCode";
+import { generateSeasonWeeks } from "../utils/seasonWeeks";
 
 export const leaguesRouter = Router();
 leaguesRouter.use(requireAuth);
@@ -31,6 +32,20 @@ leaguesRouter.post("/", async (req, res) => {
       seasons: { create: { label: seasonLabel, status: "active" } },
     },
     include: { seasons: true },
+  });
+
+  const seasonYear = Number.parseInt(seasonLabel, 10);
+  const generatedWeeks = generateSeasonWeeks(
+    Number.isNaN(seasonYear) ? new Date().getFullYear() : seasonYear,
+  );
+  await prisma.week.createMany({
+    data: generatedWeeks.map((w) => ({
+      seasonId: league.seasons[0].id,
+      weekNumber: w.weekNumber,
+      label: w.label,
+      startDate: w.startDate,
+      endDate: w.endDate,
+    })),
   });
 
   res.status(201).json(league);
