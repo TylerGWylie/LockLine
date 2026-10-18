@@ -1,5 +1,5 @@
 import { prisma } from "../services/prisma";
-import { getScores } from "../services/oddsApi";
+import { findMatchingScore, getEspnScoresBySport } from "../services/espnApi";
 import { checkAndGradeWeek, gradePicksForGame } from "../services/grading";
 
 export async function pollAndGradeScores(): Promise<void> {
@@ -7,7 +7,6 @@ export async function pollAndGradeScores(): Promise<void> {
     where: {
       status: { in: ["scheduled", "in_progress"] },
       kickoffAt: { lt: new Date() },
-      externalId: { not: null },
     },
   });
   if (pendingGames.length === 0) return;
@@ -24,27 +23,27 @@ export async function pollAndGradeScores(): Promise<void> {
   for (const [sportKey, games] of bySport) {
     let scores;
     try {
-      scores = await getScores(sportKey);
+      scores = await getEspnScoresBySport(sportKey);
     } catch (err) {
-      console.error(`Failed to fetch scores for ${sportKey}`, err);
+      console.error(`Failed to fetch ESPN scores for ${sportKey}`, err);
       continue;
     }
 
     for (const game of games) {
-      const score = scores.get(game.externalId!);
-      if (!score) continue;
+      const match = findMatchingScore(scores, game.homeTeam, game.awayTeam);
+      if (!match) continue;
 
-      if (score.completed && score.homeScore !== null && score.awayScore !== null) {
+      if (match.completed && match.homeScore !== null && match.awayScore !== null) {
         await prisma.game.update({
           where: { id: game.id },
-          data: { homeScore: score.homeScore, awayScore: score.awayScore, status: "final" },
+          data: { homeScore: match.homeScore, awayScore: match.awayScore, status: "final" },
         });
         await gradePicksForGame(game.id);
         affectedWeekIds.add(game.weekId);
-      } else if (score.homeScore !== null || score.awayScore !== null) {
+      } else if (match.homeScore !== null || match.awayScore !== null) {
         await prisma.game.update({
           where: { id: game.id },
-          data: { homeScore: score.homeScore, awayScore: score.awayScore, status: "in_progress" },
+          data: { homeScore: match.homeScore, awayScore: match.awayScore, status: "in_progress" },
         });
       }
     }

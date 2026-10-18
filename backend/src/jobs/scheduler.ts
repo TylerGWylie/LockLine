@@ -7,7 +7,8 @@ export function startJobs(): void {
     lockDueWeeks().catch((err) => console.error("lockDueWeeks failed", err));
   });
 
-  // Tune this toward 30-60 min in production to conserve the Odds API free-tier quota.
+  // Scores come from ESPN's free, unofficial scoreboard API (no quota), but it's
+  // undocumented, so poll politely rather than aggressively.
   cron.schedule("*/10 * * * *", () => {
     pollAndGradeScores().catch((err) => console.error("pollAndGradeScores failed", err));
   });
