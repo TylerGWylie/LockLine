@@ -1,8 +1,11 @@
 export interface WhatIfGame {
   id: string;
+  homeTeam: string;
+  awayTeam: string;
   favoriteTeam: "home" | "away" | null;
   spreadValue: number | null;
   status: string;
+  kickoffAt: string;
 }
 
 export interface WhatIfPick {

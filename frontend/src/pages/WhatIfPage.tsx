@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiFetch } from "../api/client";
 import {
@@ -7,6 +7,7 @@ import {
   type HypotheticalOutcomes,
   type WhatIfData,
 } from "../features/whatif/computeStandings";
+import { dayLabel, signedSpread, timeLabel } from "../utils/format";
 
 export function WhatIfPage() {
   const { leagueId, weekId } = useParams<{ leagueId: string; weekId: string }>();
@@ -22,7 +23,9 @@ export function WhatIfPage() {
     return <div className="page">{error ? <div className="error">{error}</div> : "Loading…"}</div>;
   }
 
-  const unresolvedGames = data.games.filter((g) => g.status !== "final" && g.status !== "void");
+  const unresolvedGames = data.games
+    .filter((g) => g.status !== "final" && g.status !== "void")
+    .sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime());
   const weekStandings = computeWeekStandings(data, hypotheses);
   const seasonStandings = computeSeasonStandings(data, hypotheses);
 
@@ -46,29 +49,42 @@ export function WhatIfPage() {
         <p className="muted">Every game this week is already final.</p>
       ) : (
         <ul className="list">
-          {unresolvedGames.map((g) => {
-            const game = data.games.find((x) => x.id === g.id)!;
-            const chosen = hypotheses[g.id];
+          {unresolvedGames.map((game, index) => {
+            const prevGame = index > 0 ? unresolvedGames[index - 1] : undefined;
+            const showDayHeader = !prevGame || dayLabel(game.kickoffAt) !== dayLabel(prevGame.kickoffAt);
+            const chosen = hypotheses[game.id];
+            const spread = game.spreadValue ?? 0;
+            const homeSpread = game.favoriteTeam === "home" ? -spread : spread;
+            const awaySpread = game.favoriteTeam === "away" ? -spread : spread;
+
             return (
-              <li key={g.id} className="card row" style={{ justifyContent: "space-between" }}>
-                <span>
-                  Game {g.id.slice(0, 6)} — favored side {game.favoriteTeam} by {game.spreadValue}
-                </span>
-                <span className="row">
-                  <button
-                    className={chosen === "home" ? "" : "secondary"}
-                    onClick={() => setHypothesis(g.id, "home")}
-                  >
-                    Home covers
-                  </button>
-                  <button
-                    className={chosen === "away" ? "" : "secondary"}
-                    onClick={() => setHypothesis(g.id, "away")}
-                  >
-                    Away covers
-                  </button>
-                </span>
-              </li>
+              <Fragment key={game.id}>
+                {showDayHeader && <li className="day-header">{dayLabel(game.kickoffAt)}</li>}
+                <li className="ranker-item">
+                  <div style={{ flex: 1 }}>
+                    <div className="row">
+                      <button
+                        type="button"
+                        className={chosen === "home" ? "" : "secondary"}
+                        onClick={() => setHypothesis(game.id, "home")}
+                      >
+                        {game.homeTeam} {signedSpread(homeSpread)}
+                      </button>
+                      <button
+                        type="button"
+                        className={chosen === "away" ? "" : "secondary"}
+                        onClick={() => setHypothesis(game.id, "away")}
+                      >
+                        {game.awayTeam} {signedSpread(awaySpread)}
+                      </button>
+                    </div>
+                    <div className="muted">
+                      {timeLabel(game.kickoffAt)}
+                      {game.status === "in_progress" && " · In progress"}
+                    </div>
+                  </div>
+                </li>
+              </Fragment>
             );
           })}
         </ul>

@@ -18,22 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Fragment, useEffect, useState } from "react";
 import { apiFetch, ApiError } from "../api/client";
 import type { Game, Pick } from "../types";
-
-function dayLabel(kickoffAt: string): string {
-  return new Date(kickoffAt).toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-function timeLabel(kickoffAt: string): string {
-  return new Date(kickoffAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
-
-function signedSpread(value: number): string {
-  return value > 0 ? `+${value}` : `${value}`;
-}
+import { dayLabel, signedSpread, timeLabel } from "../utils/format";
 
 interface PicksRankerProps {
   weekId: string;
