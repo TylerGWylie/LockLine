@@ -41,8 +41,3 @@ export const correctLineSchema = z.object({
 export const lockOverrideSchema = z.object({
   lockAt: z.string().datetime(),
 });
-
-export const setScoreSchema = z.object({
-  homeScore: z.number().int().min(0),
-  awayScore: z.number().int().min(0),
-});

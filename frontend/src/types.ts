@@ -90,6 +90,12 @@ export interface SpreadCorrection {
   changedByUser: { displayName: string };
 }
 
+export interface OddsQuota {
+  requestsRemaining: number | null;
+  requestsUsed: number | null;
+  checkedAt: string;
+}
+
 export interface OddsSearchResult {
   externalId: string;
   sportKey: string;

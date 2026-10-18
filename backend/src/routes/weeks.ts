@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
-import { addGamesSchema, correctLineSchema, lockOverrideSchema, setScoreSchema } from "../schemas/week";
+import { addGamesSchema, correctLineSchema, lockOverrideSchema } from "../schemas/week";
 import { prisma } from "../services/prisma";
 import {
   getWeekWithLeagueId,
@@ -215,6 +215,13 @@ weeksRouter.post("/:id/publish", async (req, res) => {
     data: { status: "published", publishedAt: new Date(), lockAt },
   });
 
+  await notifyWeekTeams(
+    week.id,
+    `${week.label} is live — make your picks`,
+    `${week.label} is up with ${week.games.length} game(s). Picks lock at ${lockAt.toLocaleString()}. ` +
+      `Get your picks in before then!`,
+  );
+
   const updated = await getWeekWithLeagueId(week.id);
   res.json(updated!.week);
 });
@@ -314,43 +321,6 @@ weeksRouter.patch("/:id/lock-override", async (req, res) => {
     data: { lockAt: new Date(parsed.data.lockAt), lockOverrideAt: new Date() },
   });
   res.json(week);
-});
-
-weeksRouter.patch("/:id/games/:gameId/score", async (req, res) => {
-  const parsed = setScoreSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten() });
-    return;
-  }
-
-  const found = await getWeekWithLeagueId(req.params.id);
-  if (!found) {
-    res.status(404).json({ error: "Week not found" });
-    return;
-  }
-  if (!(await requireCommissionerForLeague(found.leagueId, req.userId!))) {
-    res.status(403).json({ error: "Only the commissioner can enter scores" });
-    return;
-  }
-
-  const game = await prisma.game.findFirst({ where: { id: req.params.gameId, weekId: req.params.id } });
-  if (!game) {
-    res.status(404).json({ error: "Game not found in this week" });
-    return;
-  }
-  if (game.status === "void") {
-    res.status(409).json({ error: "This game has been voided and can't be scored" });
-    return;
-  }
-
-  await prisma.game.update({
-    where: { id: game.id },
-    data: { homeScore: parsed.data.homeScore, awayScore: parsed.data.awayScore, status: "final" },
-  });
-  await gradePicksForGame(game.id);
-  await checkAndGradeWeek(req.params.id);
-
-  res.status(204).send();
 });
 
 weeksRouter.patch("/:id/games/:gameId/void", async (req, res) => {

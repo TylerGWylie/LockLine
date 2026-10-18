@@ -424,7 +424,6 @@ function CommissionerScoring({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [scores, setScores] = useState<Record<string, { home: string; away: string }>>({});
 
   async function handleRefresh() {
     setError(null);
@@ -434,24 +433,6 @@ function CommissionerScoring({
       onChange();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to refresh scores");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleSaveScore(gameId: string) {
-    const entry = scores[gameId];
-    if (!entry) return;
-    setError(null);
-    setBusy(true);
-    try {
-      await apiFetch(`/weeks/${weekId}/games/${gameId}/score`, {
-        method: "PATCH",
-        body: JSON.stringify({ homeScore: Number(entry.home), awayScore: Number(entry.away) }),
-      });
-      onChange();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to save score");
     } finally {
       setBusy(false);
     }
@@ -475,7 +456,11 @@ function CommissionerScoring({
 
   return (
     <div className="card">
-      <h2 style={{ marginTop: 0 }}>Enter results</h2>
+      <h2 style={{ marginTop: 0 }}>Pending games</h2>
+      <p className="muted">
+        Scores and final results come from ESPN automatically — there's nothing to enter. If a game
+        is postponed or canceled, void it so it's excluded from scoring.
+      </p>
       {error && <div className="error">{error}</div>}
       <button className="secondary" onClick={handleRefresh} disabled={busy}>
         Refresh scores now
@@ -485,28 +470,8 @@ function CommissionerScoring({
           <li key={g.id} className="row" style={{ margin: "8px 0" }}>
             <span style={{ minWidth: 220 }}>
               {g.awayTeam} @ {g.homeTeam}
+              {g.status === "in_progress" && ` — ${g.awayScore}-${g.homeScore}`}
             </span>
-            <input
-              style={{ width: 60 }}
-              type="number"
-              placeholder="away"
-              value={scores[g.id]?.away ?? ""}
-              onChange={(e) =>
-                setScores((c) => ({ ...c, [g.id]: { home: c[g.id]?.home ?? "", away: e.target.value } }))
-              }
-            />
-            <input
-              style={{ width: 60 }}
-              type="number"
-              placeholder="home"
-              value={scores[g.id]?.home ?? ""}
-              onChange={(e) =>
-                setScores((c) => ({ ...c, [g.id]: { home: e.target.value, away: c[g.id]?.away ?? "" } }))
-              }
-            />
-            <button onClick={() => handleSaveScore(g.id)} disabled={busy}>
-              Save score
-            </button>
             <button className="danger" onClick={() => handleVoid(g.id)} disabled={busy}>
               Void
             </button>

@@ -64,9 +64,33 @@ function normalizeEvent(event: RawEvent): OddsEvent {
   };
 }
 
+export interface OddsQuota {
+  requestsRemaining: number | null;
+  requestsUsed: number | null;
+  checkedAt: string;
+}
+
+let lastKnownQuota: OddsQuota | null = null;
+
+export function getOddsQuota(): OddsQuota | null {
+  return lastKnownQuota;
+}
+
+function recordQuota(res: Response): void {
+  const remainingHeader = res.headers.get("x-requests-remaining");
+  const usedHeader = res.headers.get("x-requests-used");
+  if (remainingHeader === null && usedHeader === null) return;
+  lastKnownQuota = {
+    requestsRemaining: remainingHeader !== null ? Number(remainingHeader) : null,
+    requestsUsed: usedHeader !== null ? Number(usedHeader) : null,
+    checkedAt: new Date().toISOString(),
+  };
+}
+
 async function fetchEvents(sportKey: string): Promise<OddsEvent[]> {
   const url = `${BASE_URL}/sports/${sportKey}/odds?apiKey=${env.oddsApiKey}&regions=us&markets=spreads`;
   const res = await fetch(url);
+  recordQuota(res);
   if (!res.ok) {
     throw new Error(`Odds API error ${res.status}: ${await res.text()}`);
   }

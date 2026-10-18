@@ -1,10 +1,11 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch, ApiError } from "../api/client";
-import type { League } from "../types";
+import type { League, OddsQuota } from "../types";
 
 export function CommissionerLeaguesPage() {
   const [leagues, setLeagues] = useState<League[] | null>(null);
+  const [quota, setQuota] = useState<OddsQuota | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [leagueName, setLeagueName] = useState("");
@@ -16,6 +17,9 @@ export function CommissionerLeaguesPage() {
   }
 
   useEffect(loadLeagues, []);
+  useEffect(() => {
+    apiFetch<OddsQuota | null>("/odds/quota").then(setQuota).catch(() => {});
+  }, []);
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
@@ -44,6 +48,12 @@ export function CommissionerLeaguesPage() {
   return (
     <div className="page">
       <h1>League Commissioner</h1>
+      {quota && (
+        <p className="muted">
+          Odds API: {quota.requestsRemaining ?? "?"} requests remaining this month
+          {quota.requestsUsed !== null ? ` (${quota.requestsUsed} used)` : ""}
+        </p>
+      )}
       {error && <div className="error">{error}</div>}
 
       {commissionerLeagues.length === 0 ? (
