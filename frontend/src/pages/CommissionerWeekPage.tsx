@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiFetch, ApiError } from "../api/client";
 import type { OddsSearchResult, Week } from "../types";
+import { dayLabel, timeLabel } from "../utils/format";
 
 export function CommissionerWeekPage() {
   const { leagueId, weekId } = useParams<{ leagueId: string; weekId: string }>();
@@ -41,6 +42,7 @@ export function CommissionerWeekPage() {
             <thead>
               <tr>
                 <th>Matchup</th>
+                <th>Kickoff</th>
                 <th>Line</th>
                 <th>Score</th>
                 <th>Status</th>
@@ -51,6 +53,9 @@ export function CommissionerWeekPage() {
                 <tr key={g.id}>
                   <td>
                     {g.awayTeam} @ {g.homeTeam}
+                  </td>
+                  <td>
+                    {dayLabel(g.kickoffAt)} {timeLabel(g.kickoffAt)}
                   </td>
                   <td>
                     {g.favoriteTeam === "home" ? g.homeTeam : g.awayTeam} -{g.spreadValue}
@@ -200,6 +205,10 @@ function CommissionerStaging({
               <span>
                 {g.awayTeam} @ {g.homeTeam} —{" "}
                 {g.favoriteTeam === "home" ? g.homeTeam : g.awayTeam} -{g.spreadValue}
+                <span className="muted">
+                  {" "}
+                  · {dayLabel(g.kickoffAt)} {timeLabel(g.kickoffAt)}
+                </span>
               </span>
               <button className="danger" onClick={() => handleRemove(g.id)}>
                 Remove
@@ -230,6 +239,10 @@ function CommissionerStaging({
                 {r.awayTeam} @ {r.homeTeam}
                 {r.favoriteTeam &&
                   ` — ${r.favoriteTeam === "home" ? r.homeTeam : r.awayTeam} -${r.spreadValue}`}
+                <span className="muted">
+                  {" "}
+                  · {dayLabel(r.kickoffAt)} {timeLabel(r.kickoffAt)}
+                </span>
               </span>
               <button onClick={() => handleAdd(r)} disabled={busy}>
                 Add
