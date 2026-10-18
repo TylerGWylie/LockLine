@@ -32,16 +32,25 @@ export function HomePage() {
 
   useEffect(() => {
     if (!primaryTeam) return;
+
+    function loadCurrentWeek() {
+      apiFetch<Week>(`/leagues/${primaryTeam!.leagueId}/current-week`)
+        .then(setCurrentWeek)
+        .catch((err) => {
+          if (err instanceof ApiError && err.status === 404) {
+            setCurrentWeek(null);
+          } else {
+            setError(String(err));
+          }
+        });
+    }
+
     setCurrentWeek(undefined);
-    apiFetch<Week>(`/leagues/${primaryTeam.leagueId}/current-week`)
-      .then(setCurrentWeek)
-      .catch((err) => {
-        if (err instanceof ApiError && err.status === 404) {
-          setCurrentWeek(null);
-        } else {
-          setError(String(err));
-        }
-      });
+    loadCurrentWeek();
+    // Poll so lock status and live scores (updated in the background by server-side
+    // cron jobs) show up without requiring a manual page reload.
+    const interval = setInterval(loadCurrentWeek, 30000);
+    return () => clearInterval(interval);
   }, [primaryTeam?.leagueId]);
 
   if (teams === null) {

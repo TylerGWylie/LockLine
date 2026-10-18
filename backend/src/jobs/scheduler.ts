@@ -8,8 +8,8 @@ export function startJobs(): void {
   });
 
   // Scores come from ESPN's free, unofficial scoreboard API (no quota), but it's
-  // undocumented, so poll politely rather than aggressively.
-  cron.schedule("*/10 * * * *", () => {
+  // undocumented — frequent enough to feel live, not so frequent it hammers it.
+  cron.schedule("*/3 * * * *", () => {
     pollAndGradeScores().catch((err) => console.error("pollAndGradeScores failed", err));
   });
 }

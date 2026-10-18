@@ -15,6 +15,12 @@ export function WeekPage() {
 
   useEffect(() => {
     apiFetch<Week>(`/weeks/${weekId}`).then(setWeek).catch((err) => setError(String(err)));
+    // Poll so lock status and live scores (updated in the background by server-side
+    // cron jobs) show up without requiring a manual page reload.
+    const interval = setInterval(() => {
+      apiFetch<Week>(`/weeks/${weekId}`).then(setWeek).catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
   }, [weekId]);
   useEffect(() => {
     apiFetch<LeagueDetail>(`/leagues/${leagueId}`).then(setLeague).catch((err) => setError(String(err)));
