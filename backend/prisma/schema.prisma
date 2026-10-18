@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeagueRole {
+  commissioner
+  member
+}
+
+enum SeasonStatus {
+  upcoming
+  active
+  complete
+}
+
+enum WeekStatus {
+  draft
+  published
+  locked
+  graded
+}
+
+enum GameStatus {
+  scheduled
+  in_progress
+  final
+  void
+}
+
+enum SpreadSource {
+  odds_api
+  manual
+}
+
+enum Side {
+  home
+  away
+}
+
+enum PickResult {
+  pending
+  covered
+  not_covered
+  push
+  void
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  phone        String?
+  displayName  String
+  createdAt    DateTime @default(now())
+
+  refreshTokens      RefreshToken[]
+  leagueMemberships  LeagueMembership[]
+  teamMemberships    TeamMembership[]
+  editedPicks        Pick[]              @relation("PickLastEditedBy")
+  spreadCorrections  SpreadCorrection[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model League {
+  id         String   @id @default(uuid())
+  name       String
+  inviteCode String   @unique
+  createdAt  DateTime @default(now())
+
+  memberships LeagueMembership[]
+  seasons     Season[]
+  teams       Team[]
+
+  @@map("leagues")
+}
+
+model LeagueMembership {
+  leagueId String
+  userId   String
+  role     LeagueRole @default(member)
+  joinedAt DateTime   @default(now())
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([leagueId, userId])
+  @@map("league_memberships")
+}
+
+model Season {
+  id       String       @id @default(uuid())
+  leagueId String
+  label    String
+  status   SeasonStatus @default(upcoming)
+
+  league           League            @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  teamSeasonEntries TeamSeasonEntry[]
+  weeks            Week[]
+
+  @@unique([leagueId, label])
+  @@map("seasons")
+}
+
+model Team {
+  id        String   @id @default(uuid())
+  leagueId  String
+  name      String
+  createdAt DateTime @default(now())
+
+  league            League            @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  memberships       TeamMembership[]
+  seasonEntries     TeamSeasonEntry[]
+  picks             Pick[]
+
+  @@map("teams")
+}
+
+model TeamSeasonEntry {
+  teamId   String
+  seasonId String
+
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, seasonId])
+  @@map("team_season_entries")
+}
+
+model TeamMembership {
+  teamId   String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@map("team_memberships")
+}
+
+model Week {
+  id             String     @id @default(uuid())
+  seasonId       String
+  weekNumber     Int
+  label          String
+  status         WeekStatus @default(draft)
+  lockAt         DateTime?
+  publishedAt    DateTime?
+  lockOverrideAt DateTime?
+
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  games  Game[]
+  picks  Pick[]
+
+  @@unique([seasonId, weekNumber])
+  @@map("weeks")
+}
+
+model Game {
+  id               String        @id @default(uuid())
+  weekId           String
+  externalId       String?
+  sportKey         String
+  homeTeam         String
+  awayTeam         String
+  homeConference   String?
+  awayConference   String?
+  kickoffAt        DateTime
+  status           GameStatus    @default(scheduled)
+  homeScore        Int?
+  awayScore        Int?
+  orderIndex       Int
+  favoriteTeam     Side?
+  spreadValue      Float?
+  spreadCapturedAt DateTime?
+  spreadSource     SpreadSource?
+  spreadBookmakerKey String?
+
+  week        Week               @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  picks       Pick[]
+  corrections SpreadCorrection[]
+
+  @@index([weekId])
+  @@map("games")
+}
+
+model SpreadCorrection {
+  id               String   @id @default(uuid())
+  gameId           String
+  previousFavorite Side?
+  previousValue    Float?
+  newFavorite      Side
+  newValue         Float
+  changedByUserId  String
+  changedAt        DateTime @default(now())
+  reason           String?
+
+  game          Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  changedByUser User @relation(fields: [changedByUserId], references: [id])
+
+  @@map("spread_corrections")
+}
+
+model Pick {
+  id                String     @id @default(uuid())
+  teamId            String
+  gameId            String
+  weekId            String
+  confidenceValue   Int
+  sideSelected      Side
+  result            PickResult @default(pending)
+  pointsAwarded     Int?
+  lastEditedByUserId String?
+  updatedAt         DateTime   @updatedAt
+
+  team            Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  game            Game  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  week            Week  @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  lastEditedByUser User? @relation("PickLastEditedBy", fields: [lastEditedByUserId], references: [id])
+
+  @@unique([teamId, gameId])
+  @@unique([teamId, weekId, confidenceValue])
+  @@map("picks")
+}
