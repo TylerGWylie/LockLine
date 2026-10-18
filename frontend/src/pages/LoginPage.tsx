@@ -30,33 +30,35 @@ export function LoginPage() {
 
   return (
     <PublicLayout>
-      <div className="auth-page">
-        <h1>Log In</h1>
-        <form className="form" onSubmit={handleSubmit}>
-          <div>
-            <label>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-          <div>
-            <label>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          {error && <div className="error">{error}</div>}
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Logging in…" : "Log in"}
-          </button>
-        </form>
-        <p className="muted">
-          No account?{" "}
-          <Link to={`/signup${redirect !== "/" ? `?redirect=${encodeURIComponent(redirect)}` : ""}`}>
-            Sign up
-          </Link>
-        </p>
+      <div className="auth-shell">
+        <div className="auth-card">
+          <h1>Log In</h1>
+          <form className="form" onSubmit={handleSubmit}>
+            <div>
+              <label>Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+            <div>
+              <label>Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            {error && <div className="error">{error}</div>}
+            <button type="submit" disabled={submitting}>
+              {submitting ? "Logging in…" : "Log in"}
+            </button>
+          </form>
+          <p className="muted">
+            No account?{" "}
+            <Link to={`/signup${redirect !== "/" ? `?redirect=${encodeURIComponent(redirect)}` : ""}`}>
+              Sign up
+            </Link>
+          </p>
+        </div>
       </div>
     </PublicLayout>
   );

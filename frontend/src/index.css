@@ -137,6 +137,11 @@ select {
   font-family: var(--font-body);
 }
 
+.form input,
+.form select {
+  width: 100%;
+}
+
 button {
   padding: 9px 16px;
   border-radius: 4px;
@@ -435,23 +440,39 @@ th {
   font-size: 0.92rem;
 }
 
-.auth-page {
-  max-width: 400px;
-  margin: 56px auto;
-  padding: 0 16px;
+.auth-shell {
+  min-height: calc(100vh - 73px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background-color: var(--header-bg);
+  background-image: url("/field-background.svg");
+  background-size: cover;
+  background-position: center;
 }
 
-.auth-page h1 {
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 32px 28px;
+  background: var(--bg-muted);
+  border-radius: 10px;
+  border-top: 4px solid var(--accent);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+}
+
+.auth-card h1 {
   text-align: center;
   text-transform: uppercase;
-  margin-bottom: 24px;
+  margin: 0 0 24px;
 }
 
-.auth-page .form {
+.auth-card .form {
   max-width: none;
 }
 
-.auth-page .muted {
+.auth-card .muted {
   text-align: center;
   margin-top: 16px;
 }

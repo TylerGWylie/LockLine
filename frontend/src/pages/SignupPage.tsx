@@ -32,42 +32,44 @@ export function SignupPage() {
 
   return (
     <PublicLayout>
-      <div className="auth-page">
-        <h1>Sign Up</h1>
-        <form className="form" onSubmit={handleSubmit}>
-          <div>
-            <label>Display name</label>
-            <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
-          </div>
-          <div>
-            <label>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-          <div>
-            <label>Password</label>
-            <input
-              type="password"
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label>Phone (optional, for future notifications)</label>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} />
-          </div>
-          {error && <div className="error">{error}</div>}
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Creating account…" : "Sign up"}
-          </button>
-        </form>
-        <p className="muted">
-          Already have an account?{" "}
-          <Link to={`/login${redirect !== "/" ? `?redirect=${encodeURIComponent(redirect)}` : ""}`}>
-            Log in
-          </Link>
-        </p>
+      <div className="auth-shell">
+        <div className="auth-card">
+          <h1>Sign Up</h1>
+          <form className="form" onSubmit={handleSubmit}>
+            <div>
+              <label>Display name</label>
+              <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+            </div>
+            <div>
+              <label>Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+            <div>
+              <label>Password</label>
+              <input
+                type="password"
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label>Phone (optional, for future notifications)</label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            {error && <div className="error">{error}</div>}
+            <button type="submit" disabled={submitting}>
+              {submitting ? "Creating account…" : "Sign up"}
+            </button>
+          </form>
+          <p className="muted">
+            Already have an account?{" "}
+            <Link to={`/login${redirect !== "/" ? `?redirect=${encodeURIComponent(redirect)}` : ""}`}>
+              Log in
+            </Link>
+          </p>
+        </div>
       </div>
     </PublicLayout>
   );
