@@ -169,9 +169,17 @@ interface SortableRowProps {
   onPickSide: (side: "home" | "away") => void;
 }
 
+function signedSpread(value: number): string {
+  return value > 0 ? `+${value}` : `${value}`;
+}
+
 function SortableRow({ id, confidence, game, side, disabled, onPickSide }: SortableRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id, disabled });
   const style = { transform: CSS.Transform.toString(transform), transition };
+
+  const spread = game.spreadValue ?? 0;
+  const homeSpread = game.favoriteTeam === "home" ? -spread : spread;
+  const awaySpread = game.favoriteTeam === "away" ? -spread : spread;
 
   return (
     <li ref={setNodeRef} style={style} className="ranker-item">
@@ -192,7 +200,7 @@ function SortableRow({ id, confidence, game, side, disabled, onPickSide }: Sorta
             disabled={disabled}
             onClick={() => onPickSide("home")}
           >
-            {game.homeTeam}
+            {game.homeTeam} {signedSpread(homeSpread)}
           </button>
           <button
             type="button"
@@ -200,13 +208,10 @@ function SortableRow({ id, confidence, game, side, disabled, onPickSide }: Sorta
             disabled={disabled}
             onClick={() => onPickSide("away")}
           >
-            {game.awayTeam}
+            {game.awayTeam} {signedSpread(awaySpread)}
           </button>
         </div>
-        <div className="muted">
-          {game.favoriteTeam === "home" ? game.homeTeam : game.awayTeam} favored by {game.spreadValue}
-          {game.status !== "scheduled" && ` · ${game.status}`}
-        </div>
+        {game.status !== "scheduled" && <div className="muted">{game.status}</div>}
       </div>
     </li>
   );
