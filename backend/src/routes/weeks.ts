@@ -12,6 +12,7 @@ import { checkAndGradeWeek, gradePicksForGame } from "../services/grading";
 import { pollAndGradeScores } from "../jobs/gradeWeeks";
 import { computeWeekStandings } from "../services/standings";
 import { ensureHalfPointSpread } from "../utils/spread";
+import { getWhatIfData } from "../services/whatif";
 
 export const weeksRouter = Router();
 weeksRouter.use(requireAuth);
@@ -365,4 +366,18 @@ weeksRouter.get("/:id/standings", async (req, res) => {
   }
 
   res.json(await computeWeekStandings(req.params.id));
+});
+
+weeksRouter.get("/:id/whatif-data", async (req, res) => {
+  const found = await getWeekWithLeagueId(req.params.id);
+  if (!found) {
+    res.status(404).json({ error: "Week not found" });
+    return;
+  }
+  if (!(await isLeagueMember(found.leagueId, req.userId!))) {
+    res.status(403).json({ error: "You are not a member of this league" });
+    return;
+  }
+
+  res.json(await getWhatIfData(req.params.id));
 });
