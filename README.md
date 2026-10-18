@@ -1,8 +1,8 @@
-# Confidence League
+# Lockline
 
 A confidence-pool football league website: commissioner publishes each week's games with a frozen opening spread, teams rank their confidence picks, and the site tracks weekly/season standings plus a what-if calculator.
 
-See the MVP plan for full scope and architecture decisions.
+See the MVP plan for full scope and architecture decisions, and [DEPLOYMENT.md](./DEPLOYMENT.md) for how to take this live when you're ready.
 
 ## Project layout
 
